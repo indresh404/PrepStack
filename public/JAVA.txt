@@ -1,0 +1,354 @@
+JAVA PYQ (2023)
+
+
+What is JVM architecture?
+
+What are class loader components?
+
+What is class loading process?
+
+What is bytecode?
+
+What is JIT compiler?
+
+What is method area?
+
+What is heap memory?
+
+What is stack memory?
+
+Difference between stack and heap.
+
+What is garbage collection?
+
+Types of garbage collectors in Java.
+
+What is mark-and-sweep?
+
+What is generational GC?
+
+What is marker annotation?
+
+What is lambda expression?
+
+What is functional interface?
+
+What is Stream API?
+
+What is Optional class?
+
+What is memory leak in Java?
+
+What is OutOfMemoryError?
+
+What is exception hierarchy in Java?
+
+Difference between Error and Exception.
+
+What is custom exception?
+
+What is chained exception?
+
+What is finally block behavior?
+
+What happens if exception occurs in finally?
+
+What is try-with-resources?
+
+What is suppressed exception?
+
+What is throws vs throw?
+
+What is stack trace?
+
+What is inner class?
+
+Types of inner classes in Java.
+
+What is static nested class?
+
+What is anonymous class?
+
+When should you use inner classes?
+
+What is multiple inheritance conflict in interfaces?
+
+What is method reference?
+
+Types of method references.
+
+What is functional programming in Java?
+
+What is Predicate interface?
+
+What is Consumer interface?
+
+What is terminal vs intermediate operation?
+
+What is thread dump?
+
+What is profiling?
+
+What causes performance bottlenecks in Java?
+
+What is reduce()?
+
+What is collect()?
+
+What is groupingBy()?
+
+What is Optional.orElse vs orElseGet?
+
+What is Supplier interface?
+
+What is Function interface?
+
+What is dependency injection?
+
+What is SOLID principles?
+
+What is Open-Closed principle?
+
+What is Liskov Substitution principle?
+
+What is loose coupling?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+JAVA PYQS (2024 )
+
+
+What is JVM architecture?
+
+What are class loader components?
+
+What is class loading process?
+
+What is bytecode?
+
+What is JIT compiler?
+
+What is method area?
+
+What is heap memory?
+
+What is stack memory?
+
+What is thread lifecycle?
+
+Difference between Runnable and Thread class.
+
+What is Callable?
+
+What is Future?
+
+What is Executor framework?
+
+What is thread pool?
+
+What is synchronization block?
+
+What is intrinsic lock?
+
+What is ReentrantLock?
+
+What is volatile keyword?
+
+What is happens-before relationship?
+
+What is race condition?
+
+What is marker annotation?
+
+What is lambda expression?
+
+What is functional interface?
+
+What is deadlock prevention?
+
+What is starvation in threads?
+
+What is ForkJoinPool?
+
+Difference between stack and heap.
+
+What is object cloning? Difference between shallow and deep copy.
+
+What is covariant return type?
+
+What is method hiding?
+
+Can constructors be inherited?
+
+What is object class? List important methods.
+
+What is the contract between equals() and hashCode()?
+
+What is marker interface? Give examples?
+
+What is multiple inheritance conflict in interfaces?
+
+What is method reference?
+
+What is Supplier interface?
+
+What is Function interface?
+
+What is terminal vs intermediate operation?
+
+What is reduce()?
+
+What is collect()?
+
+What is groupingBy()?
+
+What is Optional.orElse vs orElseGet?
+
+What is stream pipeline?
+
+Can streams be reused?
+
+What are limitations of streams?
+
+What is thread dump?
+
+What is profiling?
+
+What causes performance bottlenecks in Java?
+
+What is dependency injection?
+
+What is tight coupling?
+
+What is microservices architecture?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+JAVA PYQS (2025)
+
+What is JVM architecture?
+
+Difference between stack and heap.
+
+What is garbage collection?
+
+Types of garbage collectors in Java.
+
+What is mark-and-sweep?
+
+What is generational GC?
+
+What is memory leak in Java?
+
+What is OutOfMemoryError?
+
+What is marker annotation?
+
+What is lambda expression?
+
+What is functional interface?
+
+What is Stream API?
+
+What is Optional class?
+
+What is inner class?
+
+Types of inner classes in Java.
+
+How does HashMap work internally?
+
+What is load factor?
+
+What is rehashing?
+
+Difference between HashMap and TreeMap.
+
+What is ConcurrentHashMap?
+
+What is CopyOnWriteArrayList?
+
+What is fail-fast iterator?
+
+What is fail-safe iterator?
+
+What is Comparable?
+
+What is object cloning? Difference between shallow and deep copy.
+
+What is covariant return type?
+
+What is method hiding?
+
+Can constructors be inherited?
+
+What is object class? List important methods.
+
+What is the contract between equals() and hashCode()?
+
+What is marker interface? Give examples.
+
+What is multiple inheritance conflict in interfaces?
+
+What is method reference?
+
+Types of method references.
+
+What is functional programming in Java?
+
+What is Predicate interface?
+
+What is Consumer interface?
+
+What is Supplier interface?
+
+What is Function interface?
+
+What is terminal vs intermediate operation?
+
+What is reduce()?
+
+What is collect()?
+
+What are limitations of streams? 
+
+What is thread dump?
+
+What is dependency injection?
+
+What is SOLID principles?
+
+What is Open-Closed principle?
+
+What is Liskov Substitution principle?
+
+What is loose coupling?
+
+What is tight coupling?
+
+What is microservices architecture?
+
+What is Comparator?

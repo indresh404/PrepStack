@@ -1,0 +1,302 @@
+DBMS PYQ (2023)
+
+What is concurrency control?
+
+What is serializability?
+
+What is deadlock?
+
+What is locking?
+
+What is two-phase locking?
+
+What is dirty read?
+
+What is phantom read?
+
+What is normalization?
+
+What is 1NF?
+
+What is 2NF?
+
+What is 3NF?
+
+What is BCNF?
+
+Difference between 3NF and BCNF.
+
+What is functional dependency?
+
+What is partial dependency?
+
+What is transitive dependency?
+
+What is denormalization?
+
+Difference between primary key and unique key.
+
+What is composite key?
+
+What is referential integrity?
+
+What is entity integrity?
+
+What are integrity constraints?
+
+Difference between relational algebra and relational calculus.
+
+What is join? Types of joins.
+
+What is natural join?
+
+What is division operation?
+
+What is union compatibility?
+
+What is NOT NULL constraint?
+
+What is join dependency?
+
+Difference between 4NF and 5NF.
+
+What is lossless decomposition?
+
+What is lossy decomposition?
+
+What is dependency preservation?
+
+What are Armstrong’s axioms?
+
+What is closure of attributes?
+
+How do you find candidate keys?
+
+What is minimal cover?
+
+What is consistency in distributed DB?
+
+What is eventual consistency?
+
+What is quorum-based protocol?
+
+What is canonical cover?
+
+What is decomposition in DBMS?
+
+What is lock conversion?
+
+What is lock escalation?
+
+What is intention lock?
+
+What is multiple granularity locking?
+
+What is deadlock detection?
+
+What is deadlock prevention?
+
+What is wait-die scheme?
+
+What is wound-wait scheme?
+
+What is starvation?
+
+What is livelock?
+
+What is optimistic concurrency control?
+
+
+
+
+
+
+
+DBMS PYQ (2024)
+
+What is concurrency control?
+
+What is serializability?
+
+What is deadlock?
+
+What is locking?
+
+What is phantom read?
+
+What is primary key?
+
+What is foreign key?
+
+What is candidate key?
+
+What is super key?
+
+Difference between primary key and unique key.
+
+What is composite key?
+
+What is referential integrity?
+
+What is entity integrity?
+
+What are integrity constraints?
+
+What is relational model?
+
+What is a tuple?
+
+What is a domain?
+
+What is relational algebra?
+
+Types of relational algebra operations.
+
+Difference between relational algebra and relational calculus.
+
+What is join? Types of joins.
+
+What is natural join?
+
+What is division operation?
+
+What is union compatibility?
+
+What is non-clustered index?
+
+What is dense index?
+
+What is sparse index?
+
+What is extendible hashing?
+
+What is NOT NULL constraint?
+
+What is lossy decomposition?
+
+What is consistency in distributed DB?
+
+What is eventual consistency?
+
+What is quorum-based protocol?
+
+What is decomposition in DBMS?
+
+When does normalization fail practically?
+
+What is steal and no-steal policy?
+
+What is force and no-force policy?
+
+Difference between immediate and deferred update.
+
+What is fuzzy checkpoint?
+
+What is transaction log?
+
+
+
+
+
+
+
+
+DBMS PYQ (2025)
+
+What is two-phase locking?
+
+What is dirty read?
+
+What is phantom read?
+
+What is normalization?
+
+Difference between 3NF and BCNF.
+
+What is functional dependency?
+
+What is partial dependency?
+
+What is transitive dependency?
+
+What is denormalization?
+
+What is primary key?
+
+What is foreign key?
+
+What is candidate key?
+
+What is super key?
+
+Difference between primary key and unique key.
+
+What is composite key?
+
+What is referential integrity?
+
+What is entity integrity?
+
+What is relational model?
+
+What is a tuple?
+
+What is a domain?
+
+What is relational algebra?
+
+What is division operation?
+
+What is union compatibility?
+
+What is non-clustered index?
+
+What is dense index?
+
+What is sparse index?
+
+What is B-Tree?
+
+What is B+ Tree?
+
+Difference between B-Tree and B+ Tree.
+
+Why is B+ Tree preferred in databases?
+
+What is hashing in DBMS?
+
+What is lossy decomposition?
+
+What is dependency preservation?
+
+What are Armstrong’s axioms?
+
+What is closure of attributes?
+
+How do you find candidate keys?
+
+What is minimal cover?
+
+What is canonical cover?
+
+What is decomposition in DBMS?
+
+What is centralized DBMS?
+
+What is distributed DBMS?
+
+What is client-server DBMS?
+
+What is shared disk architecture?
+
+What is shared nothing architecture?
+
+What is data fragmentation?
+
+When does normalization fail practically?
+
+What is consistency in distributed DB?
+
+What is eventual consistency?
+
+What is quorum-based protocol?

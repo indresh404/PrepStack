@@ -11,7 +11,7 @@ import { auth, db } from '../../firebase';
 import {
   collection, query, orderBy, onSnapshot,
   updateDoc, doc, increment, getDoc, arrayUnion, arrayRemove,
-  getDocs
+  getDocs, limit
 } from 'firebase/firestore';
 
 // ── Animation ────────────────────────────────────────────────────────────────
@@ -284,7 +284,9 @@ const FilterBar = memo(({ filters, onChange, total, loading }) => {
 // ── Note Card ─────────────────────────────────────────────────────────────────
 const NoteCard = memo(({ note, onLike, currentUserId }) => {
   const [liking, setLiking] = useState(false);
-  const ts = getTypeStyle(note.resourceType || note.type);
+  // Handle both resourceType and type fields for backward compatibility
+  const resourceType = note.resourceType || note.type || 'notes';
+  const ts = getTypeStyle(resourceType);
   const rank = note.rank;
   const rs = getRankStyle(rank);
   const isLiked = note.likedBy?.includes(currentUserId);
@@ -300,8 +302,7 @@ const NoteCard = memo(({ note, onLike, currentUserId }) => {
     }
   };
 
-  const displayType = note.resourceType || note.type || 'notes';
-  const typeLabel = { notes: 'Notes', pyq: 'PYQ', lab_manual: 'Lab Manual', viva: 'Viva' }[displayType] || displayType.toUpperCase();
+  const typeLabel = { notes: 'Notes', pyq: 'PYQ', lab_manual: 'Lab Manual', viva: 'Viva' }[resourceType] || resourceType.toUpperCase();
 
   return (
     <motion.div
@@ -344,7 +345,7 @@ const NoteCard = memo(({ note, onLike, currentUserId }) => {
 
         {/* Title */}
         <h4 className="font-bold text-slate-800 text-sm leading-snug group-hover:text-blue-600 transition-colors mb-1.5 line-clamp-2">
-          {note.title}
+          {note.title || 'Untitled'}
         </h4>
 
         {/* Description if available */}
@@ -505,69 +506,123 @@ const BestNotes = () => {
     setLoading(true);
     setError(null);
 
-    const q = query(
-      collection(db, 'notes'),
-      orderBy('upvotes', 'desc')
-    );
+    let unsubscribe;
 
-    const unsub = onSnapshot(
-      q,
-      async (snap) => {
-        if (snap.empty) {
-          setAllNotes([]);
-          setLoading(false);
-          return;
-        }
+    const setupListener = async () => {
+      try {
+        // Try with ordering first
+        const q = query(
+          collection(db, 'notes'),
+          orderBy('upvotes', 'desc')
+        );
 
-        const notePromises = snap.docs.map(async (d) => {
-          const data = d.data();
-          const authorName = await getAuthorName(data.uploadedBy);
-          return {
-            id: d.id,
-            ...data,
-            authorName,
-            upvotes:   data.upvotes   || 0,
-            downloads: data.downloads || 0,
-            likedBy:   data.likedBy   || [],
-            verified:  data.verified  || false,
-            gold:      data.gold      || false,
-          };
-        });
+        unsubscribe = onSnapshot(
+          q,
+          async (snap) => {
+            if (snap.empty) {
+              setAllNotes([]);
+              setLoading(false);
+              return;
+            }
 
-        const resolved = await Promise.all(notePromises);
-        setAllNotes(resolved);
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Firestore error:', err);
-        if (err.code === 'failed-precondition') {
-          const q2 = query(collection(db, 'notes'));
-          onSnapshot(q2, async (snap2) => {
-            const notePromises = snap2.docs.map(async (d) => {
-              const data = d.data();
+            // Process notes in batches to avoid too many promises at once
+            const notes = [];
+            for (const doc of snap.docs) {
+              const data = doc.data();
               const authorName = await getAuthorName(data.uploadedBy);
-              return { id: d.id, ...data, authorName, upvotes: data.upvotes || 0, downloads: data.downloads || 0, likedBy: data.likedBy || [], verified: data.verified || false, gold: data.gold || false };
-            });
-            const resolved = (await Promise.all(notePromises)).sort((a, b) => b.upvotes - a.upvotes);
-            setAllNotes(resolved);
+              notes.push({
+                id: doc.id,
+                ...data,
+                authorName,
+                upvotes: data.upvotes || 0,
+                downloads: data.downloads || 0,
+                likedBy: data.likedBy || [],
+                verified: data.verified || false,
+                gold: data.gold || false,
+              });
+            }
+            
+            setAllNotes(notes);
             setLoading(false);
-          }, (err2) => {
-            setError('Could not load notes: ' + err2.message);
-            setLoading(false);
-          });
-        } else {
-          setError('Could not load notes: ' + err.message);
-          setLoading(false);
-        }
-      }
-    );
+          },
+          async (err) => {
+            console.error('Firestore error with ordering:', err);
+            
+            // If index error, fall back to without ordering
+            if (err.code === 'failed-precondition' || err.message.includes('index')) {
+              console.log('Falling back to unordered query');
+              
+              // Unsubscribe from the failed listener
+              if (unsubscribe) unsubscribe();
+              
+              // Set up new listener without ordering
+              const fallbackQ = query(collection(db, 'notes'));
+              
+              unsubscribe = onSnapshot(
+                fallbackQ,
+                async (snap2) => {
+                  if (snap2.empty) {
+                    setAllNotes([]);
+                    setLoading(false);
+                    return;
+                  }
 
-    return unsub;
-  }, []);
+                  // Process notes in batches
+                  const notes = [];
+                  for (const doc of snap2.docs) {
+                    const data = doc.data();
+                    const authorName = await getAuthorName(data.uploadedBy);
+                    notes.push({
+                      id: doc.id,
+                      ...data,
+                      authorName,
+                      upvotes: data.upvotes || 0,
+                      downloads: data.downloads || 0,
+                      likedBy: data.likedBy || [],
+                      verified: data.verified || false,
+                      gold: data.gold || false,
+                    });
+                  }
+                  
+                  // Sort manually by upvotes
+                  notes.sort((a, b) => b.upvotes - a.upvotes);
+                  setAllNotes(notes);
+                  setLoading(false);
+                },
+                (err2) => {
+                  console.error('Fallback listener error:', err2);
+                  setError('Could not load notes: ' + err2.message);
+                  setLoading(false);
+                }
+              );
+            } else {
+              setError('Could not load notes: ' + err.message);
+              setLoading(false);
+            }
+          }
+        );
+      } catch (err) {
+        console.error('Error setting up listener:', err);
+        setError('Could not load notes: ' + err.message);
+        setLoading(false);
+      }
+    };
+
+    setupListener();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [getAuthorName]);
 
   // ── Like handler ──
   const handleLike = useCallback(async (noteId, currentlyLiked) => {
-    if (!currentUser) { alert('Please log in to like notes.'); return; }
+    if (!currentUser) { 
+      alert('Please log in to like notes.'); 
+      return; 
+    }
     const ref = doc(db, 'notes', noteId);
     try {
       if (currentlyLiked) {
@@ -583,6 +638,7 @@ const BestNotes = () => {
       }
     } catch (err) {
       console.error('Like error:', err);
+      alert('Failed to update like. Please try again.');
     }
   }, [currentUser]);
 
@@ -592,14 +648,16 @@ const BestNotes = () => {
 
     // Search filter (title, subject, author, description)
     if (filters.search) {
-      const q = filters.search.toLowerCase();
-      list = list.filter(n =>
-        n.title?.toLowerCase().includes(q) ||
-        n.subject?.toLowerCase().includes(q) ||
-        n.authorName?.toLowerCase().includes(q) ||
-        n.uploadedByName?.toLowerCase().includes(q) ||
-        n.description?.toLowerCase().includes(q)
-      );
+      const q = filters.search.toLowerCase().trim();
+      if (q) {
+        list = list.filter(n =>
+          (n.title?.toLowerCase().includes(q)) ||
+          (n.subject?.toLowerCase().includes(q)) ||
+          (n.authorName?.toLowerCase().includes(q)) ||
+          (n.uploadedByName?.toLowerCase().includes(q)) ||
+          (n.description?.toLowerCase().includes(q))
+        );
+      }
     }
 
     // Branch filter
@@ -607,7 +665,7 @@ const BestNotes = () => {
       list = list.filter(n => n.branch === filters.branch);
     }
 
-    // Semester filter
+    // Semester filter - handle both string and number
     if (filters.semester !== 'All') {
       list = list.filter(n => String(n.semester) === filters.semester);
     }
@@ -617,22 +675,27 @@ const BestNotes = () => {
       list = list.filter(n => n.subject === filters.subject);
     }
 
-    // Module filter
+    // Module filter - handle both string and number
     if (filters.module !== 'All') {
       list = list.filter(n => String(n.module) === filters.module);
     }
 
-    // Type filter
+    // Type filter - check both fields
     if (filters.type !== 'all') {
       list = list.filter(n => (n.resourceType || n.type) === filters.type);
     }
 
     // Verified filter
-    if (filters.verified === 'verified')   list = list.filter(n => n.verified);
-    if (filters.verified === 'unverified') list = list.filter(n => !n.verified);
+    if (filters.verified === 'verified') {
+      list = list.filter(n => n.verified === true);
+    } else if (filters.verified === 'unverified') {
+      list = list.filter(n => n.verified === false);
+    }
 
-    // Rank by upvotes
-    return list.map((note, i) => ({ ...note, rank: i + 1 }));
+    // Sort by upvotes (descending) and assign ranks
+    return list
+      .sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0))
+      .map((note, index) => ({ ...note, rank: index + 1 }));
   }, [allNotes, filters]);
 
   return (

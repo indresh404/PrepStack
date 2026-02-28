@@ -124,9 +124,33 @@ const StatCard = memo(({ icon: Icon, label, value, trend, color, delay = 0 }) =>
   );
 });
 
-// ─── PointsBarGraph ───────────────────────────────────
+
 const PointsBarGraph = memo(({ data }) => {
-  const maxPoints = useMemo(() => Math.max(...data.map(d => d.points)), [data]);
+  const maxPoints = useMemo(() => {
+    if (!data || data.length === 0) return 0;
+    return Math.max(...data.map(d => d.points || 0));
+  }, [data]);
+
+  // If no data, show empty state
+  if (!data || data.length === 0) {
+    return (
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <BarChart3 size={20} className="text-blue-600" />
+            <h3 className="font-semibold text-gray-800">Points Leaderboard</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400">This Month</span>
+            <Sparkles size={13} className="text-yellow-400" />
+          </div>
+        </div>
+        <div className="text-center py-8 text-gray-400 text-sm">
+          No student data available
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="p-6">
@@ -136,12 +160,13 @@ const PointsBarGraph = memo(({ data }) => {
           <h3 className="font-semibold text-gray-800">Points Leaderboard</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">This Month</span>
+          <span className="text-xs text-gray-400">This Month · {data.length} students</span>
           <Sparkles size={13} className="text-yellow-400" />
         </div>
       </div>
 
-      <div className="space-y-3">
+      {/* Scrollable container for 15 users */}
+      <div className="max-h-[500px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
         {data.map((student, index) => {
           const barColor = index === 0 ? 'from-yellow-400 to-yellow-500' :
                           index === 1 ? 'from-slate-400 to-slate-500' :
@@ -153,35 +178,40 @@ const PointsBarGraph = memo(({ data }) => {
                         index === 2 ? 'bg-amber-50 text-amber-600 border-amber-200' :
                         'bg-blue-50 text-blue-600 border-blue-200';
 
+          const rankIcon = index === 0 ? <Crown size={11} /> :
+                          index === 1 ? <Medal size={11} /> :
+                          index === 2 ? <Medal size={11} /> : 
+                          <span className="text-[10px] font-bold">{index + 1}</span>;
+
           return (
             <motion.div
-              key={student.id || student.name}
+              key={student.id || student.name || index}
               variants={fadeUp}
-              transition={{ delay: index * 0.06 }}
-              className="flex items-center gap-3"
+              initial="hidden"
+              animate="show"
+              transition={{ delay: Math.min(index * 0.03, 0.5) }} // Cap delay to prevent too long
+              className="flex items-center gap-3 group hover:bg-gray-50 p-2 rounded-lg transition-colors"
             >
               <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs border flex-shrink-0 ${rankBg}`}>
-                {index === 0 ? <Crown size={11} /> : 
-                 index === 1 ? <Medal size={11} /> : 
-                 index === 2 ? <Medal size={11} /> : index + 1}
+                {rankIcon}
               </div>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform">
                 <User size={13} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-700 truncate">
-                    {student.name || student.username || 'Anonymous'}
+                  <span className="text-sm font-medium text-gray-700 truncate group-hover:text-gray-900">
+                    {student.name || student.username || 'Anonymous Student'}
                   </span>
-                  <span className="text-sm font-bold text-blue-600 ml-2 flex-shrink-0">
-                    {student.points?.toLocaleString() || 0}
+                  <span className="text-sm font-bold text-blue-600 ml-2 flex-shrink-0 group-hover:text-blue-700">
+                    {student.points?.toLocaleString() || 0} pts
                   </span>
                 </div>
-                <div className="h-2.5 bg-blue-50 rounded-full overflow-hidden">
+                <div className="h-2 bg-blue-50 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${(student.points / maxPoints) * 100}%` }}
-                    transition={{ delay: index * 0.1 + 0.4, duration: 0.9 }}
+                    transition={{ delay: Math.min(index * 0.05, 0.4), duration: 0.7, ease: "easeOut" }}
                     className={`h-full rounded-full bg-gradient-to-r ${barColor}`}
                   />
                 </div>
@@ -190,6 +220,30 @@ const PointsBarGraph = memo(({ data }) => {
           );
         })}
       </div>
+
+      {/* Show total count */}
+      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+        <span>Total Students: {data.length}</span>
+        <span className="font-medium text-blue-600">Top Score: {maxPoints.toLocaleString()}</span>
+      </div>
+
+      {/* Custom scrollbar styles */}
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+      `}</style>
     </Card>
   );
 });
@@ -597,25 +651,37 @@ const StudentDashboard = () => {
   }, []);
 
   // Fetch all dashboard data
-  const fetchDashboardData = async (uid) => {
-    try {
-      // Fetch leaderboard (top 10 users by points)
-      const usersQuery = query(
-        collection(db, 'users'),
-        orderBy('points', 'desc'),
-        limit(10)
-      );
-      const usersSnapshot = await getDocs(usersQuery);
-      const usersList = usersSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setLeaderboardData(usersList.slice(0, 5));
-      setPointsGraphData(usersList.slice(0, 7));
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+// Fetch all dashboard data
+const fetchDashboardData = async (uid) => {
+  try {
+    // Fetch leaderboard (top 15 users by points)
+    const usersQuery = query(
+      collection(db, 'users'),
+      orderBy('points', 'desc'),
+      limit(15)
+    );
+    const usersSnapshot = await getDocs(usersQuery);
+    const usersList = usersSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    console.log(`Fetched ${usersList.length} users`); // Debug log
+    
+    // Show top 5 in leaderboard component
+    setLeaderboardData(usersList.slice(0, 5));
+    
+    // Show ALL users in points graph (up to 15)
+    setPointsGraphData(usersList);
+    
+    // If you want exactly 15 even with fewer users, you could add placeholder data
+    if (usersList.length < 15) {
+      console.log(`Only ${usersList.length} users found in database`);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+  }
+};
 
   // Handle sign out
   const handleSignOut = useCallback(async () => {

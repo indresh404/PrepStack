@@ -1,0 +1,272 @@
+AOA PAPER 1 YEAR (2023)
+
+
+What is space complexity?
+
+What is asymptotic analysis?
+
+What is the difference between best, average, and worst case?
+
+What is Big-O notation?
+
+What is Big-Theta (Θ) notation?
+
+What is Big-Omega (Ω) notation?
+
+Why is O(n²) worse than O(n log n)?
+
+What is amortized analysis?
+
+What is the Master Theorem?
+
+When do we use recurrence relations?
+
+What is substitution method?
+
+What is recursion tree method?
+
+Why is Quick Sort worst-case O(n²)?
+
+What is external sorting?
+
+What is an algorithm?
+
+What are the characteristics of a good algorithm?
+
+What is time complexity?
+
+What is space complexity?
+
+What is little-o (o) notation?
+
+What is little-omega (ω) notation?
+
+What does tight bound mean?
+
+What is the difference between upper bound and tight bound?
+
+What is worst-case complexity of nested loops?
+
+How do you analyze a loop where the variable halves every iteration?
+
+How do you analyze logarithmic complexity?
+
+What is amortized time complexity with example?
+
+What is aggregate analysis?
+
+What is accounting method in amortized analysis?
+
+What is potential method?
+
+What is complexity of recursive Fibonacci?
+
+Why is naive Fibonacci exponential?
+
+What is tail recursion?
+
+What is stack space in recursion?
+
+What is recurrence relation of Merge Sort?
+
+Why is Merge Sort always O(n log n)?
+
+What is Karatsuba Algorithm?
+
+What is the height of recursion tree in Merge Sort?
+
+How do you analyze T(n) = 2T(n/2) + n?
+
+When does Master Theorem fail?
+
+What is tabulation?
+
+Difference between top-down and bottom-up DP.
+
+Explain Longest Common Subsequence.
+
+When should you NOT use DP?
+
+What is state-space tree?
+
+What is pruning?
+
+What is reduction?
+
+Why is TSP NP-Hard?
+
+What is lower bound proof technique?
+
+
+AOA PAPER 2 (2024)
+
+
+What is space complexity?
+
+What is asymptotic analysis?
+
+What is Dynamic Programming?
+
+Difference between Greedy and Dynamic Programming.
+
+What is Backtracking?
+
+What is Branch and Bound?
+
+What is Brute Force technique?
+
+Why is Quick Sort worst-case O(n²)?
+
+What is external sorting?
+
+What is Brute Force technique?
+
+What is Randomized Algorithm?
+
+What is an algorithm?
+
+What are the characteristics of a good algorithm?
+
+What is time complexity?
+
+What is space complexity?
+
+What is recurrence relation of Merge Sort?
+
+Why is Merge Sort always O(n log n)?
+
+What is recurrence of Quick Sort (best and worst)?
+
+What is recurrence of Binary Search?
+
+What are the limitations of Divide and Conquer?
+
+What is Strassen’s Matrix Multiplication?
+
+What is Karatsuba Algorithm?
+
+What is the height of recursion tree in Merge Sort?
+
+How do you analyze T(n) = 2T(n/2) + n?
+
+When does Master Theorem fail?
+
+What is tabulation?
+
+Difference between top-down and bottom-up DP.
+
+Explain Longest Common Subsequence.
+
+What is state-space tree?
+
+What is reduction?
+
+Why is TSP NP-Hard?
+
+What is lower bound proof technique?
+
+
+AOA PAPER (2025)
+
+
+What is Big-O notation?
+
+What is Big-Theta (Θ) notation?
+
+What is Big-Omega (Ω) notation?
+
+Why is O(n²) worse than O(n log n)?
+
+What is amortized analysis?
+
+Compare Merge Sort and Quick Sort.
+
+Why is Binary Search O(log n)?
+
+What is In-place sorting?
+
+Which sorting algorithm is best for nearly sorted data?
+
+Why is Quick Sort worst-case O(n²)?
+
+What is external sorting?
+
+What is Brute Force technique?
+
+What is Randomized Algorithm?
+
+What is an algorithm?
+
+What are the characteristics of a good algorithm?
+
+What is time complexity?
+
+What is space complexity?
+
+What is little-o (o) notation?
+
+What is little-omega (ω) notation?
+
+What does tight bound mean?
+
+What is the difference between upper bound and tight bound?
+
+What is worst-case complexity of nested loops?
+
+How do you analyze a loop where the variable halves every iteration?
+
+How do you analyze logarithmic complexity?
+
+What is tail recursion?
+
+What is stack space in recursion?
+
+What is recurrence relation of Merge Sort?
+
+Why is Merge Sort always O(n log n)?
+
+What is recurrence of Quick Sort (best and worst)?
+
+What is recurrence of Binary Search?
+
+How do you analyze T(n) = 2T(n/2) + n?
+
+When does Master Theorem fail?
+
+What is tabulation?
+
+Difference between top-down and bottom-up DP.
+
+Explain Longest Common Subsequence.
+
+Explain Matrix Chain Multiplication.
+
+What is Bellman-Ford algorithm?
+
+Why does DP reduce time complexity?
+
+When should you NOT use DP?
+
+What is state-space tree?
+
+What is pruning?
+
+Explain N-Queen problem.
+
+Explain Travelling Salesman Problem.
+
+What is NP problem?
+
+What is NP-Complete problem?
+
+What is NP-Hard problem?
+
+Difference between P and NP.
+
+What is approximation algorithm?
+
+What is competitive analysis?
+
+What is randomized quicksort?
+
+What is probabilistic analysis?

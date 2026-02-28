@@ -1,5 +1,5 @@
 // src/components/student/MyNotes.jsx
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Bookmark, Upload, Search, Clock, Eye, Heart,
@@ -49,13 +49,12 @@ const colorMap = {
   viva:       'from-amber-500 to-amber-600',
 };
 
-// Safely get user uid from localStorage — handles uid / id / userId field names
+// ─── Helper Functions ─────────────────────────────────────────────────────────
 const getUserFromStorage = () => {
   try {
     const raw = localStorage.getItem('user');
     if (!raw) return null;
     const u = JSON.parse(raw);
-    // Support different possible field names
     const uid = u.uid || u.id || u.userId || u.user_id || null;
     return uid ? { ...u, uid } : null;
   } catch {
@@ -63,18 +62,42 @@ const getUserFromStorage = () => {
   }
 };
 
-// Convert a Firestore doc snapshot to a UI note object
-const docToNote = (d) => {
-  const data = d.data();
-  const ts   = data.uploadedAt?.toDate?.();
+// Normalize note data to ensure consistent structure
+const normalizeNote = (doc) => {
+  const data = doc.data();
+  const ts = data.uploadedAt?.toDate?.();
   const days = ts ? Math.floor((Date.now() - ts) / 86400000) : null;
+  
   return {
-    id: d.id,
-    ...data,
+    id: doc.id,
+    title: data.title || 'Untitled',
+    description: data.description || '',
+    fileName: data.fileName || '',
+    fileUrl: data.fileUrl || null,
+    pointsType: data.pointsType || 'free',
+    points: Number(data.points) || 0,
+    branch: data.branch || '',
+    semester: Number(data.semester) || 1,
+    subject: data.subject || '',
+    module: Number(data.module) || 1,
+    resourceType: data.resourceType || 'notes',
+    type: data.resourceType || 'notes',
+    uploadedBy: data.uploadedBy || '',
+    uploadedByName: data.uploadedByName || data.authorName || 'User',
+    uploadedAt: data.uploadedAt,
+    views: Number(data.views) || 0,
+    likes: Number(data.likes) || 0,
+    upvotes: Number(data.upvotes) || Number(data.likes) || 0,
+    downloads: Number(data.downloads) || 0,
+    saves: Number(data.saves) || 0,
+    likedBy: data.likedBy || [],
+    verified: Boolean(data.verified) || false,
+    gold: Boolean(data.gold) || false,
+    pages: Number(data.pages) || Math.floor(Math.random() * 28) + 8,
     updated: days === null ? 'Just now' : days === 0 ? 'Today' : `${days}d ago`,
-    color:  colorMap[data.resourceType] || 'from-blue-500 to-blue-600',
-    saved:  false,
-    liked:  false,
+    color: colorMap[data.resourceType] || 'from-blue-500 to-blue-600',
+    saved: false,
+    liked: false,
   };
 };
 
@@ -271,6 +294,15 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
     branch: '', semester: '', subject: '', module: '', resourceType: '',
   });
   const [errors, setErrors] = useState({});
+  
+  const isMounted = useRef(true);
+  const isSubmitting = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const set = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
 
@@ -282,7 +314,10 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
 
   const handleFileChange = e => {
     const f = e.target.files[0];
-    if (f) { set('fileName', f.name); setErrors(prev => ({ ...prev, file: '' })); }
+    if (f) { 
+      set('fileName', f.name); 
+      setErrors(prev => ({ ...prev, file: '' })); 
+    }
   };
 
   const validate1 = () => {
@@ -305,66 +340,89 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
     return !Object.keys(e).length;
   };
 
-  const handleSubmit = async e => {
-    e.preventDefault();
-    if (!validate2()) return;
-    setLoading(true);
-    try {
-      const user = getUserFromStorage();
-      if (!user?.uid) throw new Error('Not authenticated — please log in again');
+  // ── FIXED handleSubmit ────────────────────────────────────────────────────
+  const handleSubmit = async (e) => {
+  e.preventDefault();
 
-      // Get latest points from Firestore
-      let currentPoints = 0;
-      try {
-        const userSnap = await getDoc(doc(db, 'users', user.uid));
-        if (userSnap.exists()) currentPoints = userSnap.data().points || 0;
-      } catch (_) { /* continue even if points fetch fails */ }
+  if (loading) return; // 🔥 Hard lock
 
-      const noteData = {
-        title:          formData.title,
-        description:    formData.description || '',
-        fileName:       formData.fileName,
-        fileUrl:        null,
-        pointsType:     formData.pointsType,
-        points:         formData.pointsType === 'paid' ? parseInt(formData.points) : 0,
-        branch:         formData.branch,
-        semester:       parseInt(formData.semester),
-        subject:        formData.subject,
-        module:         parseInt(formData.module),
-        resourceType:   formData.resourceType,
-        uploadedBy:     user.uid,
-        uploadedByName: user.username || user.name || user.displayName || 'User',
-        uploadedAt:     serverTimestamp(),
-        views: 0, saves: 0, likes: 0,
-        pages: Math.floor(Math.random() * 28) + 8,
-      };
+  if (!validate2()) return;
 
-      const docRef = await addDoc(collection(db, 'notes'), noteData);
+  setLoading(true);
 
-      // Update points — wrapped so upload doesn't fail if this does
-      try {
-        await updateDoc(doc(db, 'users', user.uid), { points: increment(10) });
-      } catch (_) {}
+  try {
+    const user = getUserFromStorage();
+    if (!user?.uid) throw new Error("Please login again");
 
-      const newPoints = currentPoints + 10;
-      localStorage.setItem('user', JSON.stringify({ ...user, points: newPoints }));
+    const noteData = {
+      title: formData.title,
+      description: formData.description || "",
+      fileName: formData.fileName,
+      fileUrl: null,
+      pointsType: formData.pointsType,
+      points:
+        formData.pointsType === "paid"
+          ? parseInt(formData.points)
+          : 0,
+      branch: formData.branch,
+      semester: parseInt(formData.semester),
+      subject: formData.subject,
+      module: parseInt(formData.module),
+      resourceType: formData.resourceType,
+      type: formData.resourceType,
+      uploadedBy: user.uid,
+      uploadedByName:
+        user.username ||
+        user.name ||
+        user.displayName ||
+        "User",
+      uploadedAt: serverTimestamp(),
+      views: 0,
+      saves: 0,
+      likes: 0,
+      upvotes: 0,
+      downloads: 0,
+      likedBy: [],
+      verified: false,
+      gold: false,
+      pages: Math.floor(Math.random() * 20) + 8,
+    };
 
-      const newNote = {
-        id: docRef.id,
-        ...noteData,
-        uploadedAt: { toDate: () => new Date() },
-        updated: 'Just now',
-        color: colorMap[noteData.resourceType] || 'from-blue-500 to-blue-600',
-        saved: false, liked: false,
-      };
+    const docRef = await addDoc(collection(db, "notes"), noteData);
 
-      setUploadSuccess(true);
-      setTimeout(() => { onUpload(newNote, newPoints); onClose(); }, 1600);
-    } catch (err) {
-      console.error('Upload error:', err);
-      setErrors({ submit: err.message || 'Upload failed. Please try again.' });
-    } finally {
-      setLoading(false);
+    // reward points
+    await updateDoc(doc(db, "users", user.uid), {
+      points: increment(10),
+    });
+
+    const newNote = {
+      id: docRef.id,
+      ...noteData,
+      uploadedAt: { toDate: () => new Date() },
+      updated: "Just now",
+      color:
+        colorMap[noteData.resourceType] ||
+        "from-blue-500 to-blue-600",
+      saved: false,
+      liked: false,
+    };
+
+    onUpload(newNote, user.points + 10);
+
+    setLoading(false);
+    onClose(); // close instantly (no timeout)
+  } catch (err) {
+    console.error("Upload error:", err);
+    setErrors({
+      submit: err.message || "Upload failed. Try again.",
+    });
+    setLoading(false);
+  }
+};
+
+  const handleClose = () => {
+    if (!loading) {
+      onClose();
     }
   };
 
@@ -381,7 +439,7 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <motion.div
         initial={{ scale: 0.92, y: 24 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 24 }}
@@ -405,7 +463,11 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                 <h2 className="text-lg font-bold text-gray-800">Upload New Note</h2>
                 <p className="text-xs text-gray-400 mt-0.5">Step {step} of 2</p>
               </div>
-              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <button 
+                onClick={handleClose} 
+                disabled={loading}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <X size={18} className="text-gray-400" />
               </button>
             </div>
@@ -422,14 +484,14 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Title <span className="text-red-500">*</span></label>
                       <input name="title" value={formData.title} onChange={handleChange}
-                        placeholder="e.g., DBMS Normalization Complete Notes" className={inputCls(errors.title)} />
+                        placeholder="e.g., DBMS Normalization Complete Notes" className={inputCls(errors.title)} disabled={loading} />
                       {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
                       <textarea name="description" value={formData.description} onChange={handleChange}
                         rows="3" placeholder="Brief overview…"
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 transition-colors resize-none text-sm" />
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 transition-colors resize-none text-sm" disabled={loading} />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -437,11 +499,11 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                         <span className="ml-2 text-xs text-gray-400 font-normal">— filename saved, no upload</span>
                       </label>
                       <label htmlFor="pdf-upload"
-                        className={`flex flex-col items-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer transition-colors ${errors.file ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50/30'}`}>
+                        className={`flex flex-col items-center gap-2 border-2 border-dashed rounded-xl p-6 cursor-pointer transition-colors ${errors.file ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50/30'} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         <Upload size={28} className="text-gray-400" />
                         <span className="text-sm text-gray-600">{formData.fileName || 'Click to select a file'}</span>
                         <span className="text-xs text-gray-400">PDF, DOC, DOCX</span>
-                        <input id="pdf-upload" type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} className="hidden" />
+                        <input id="pdf-upload" type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} className="hidden" disabled={loading} />
                       </label>
                       {errors.file && <p className="text-xs text-red-500 mt-1">{errors.file}</p>}
                     </div>
@@ -449,12 +511,14 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Access type</label>
                       <div className="flex gap-3">
                         {['free', 'paid'].map(t => (
-                          <button key={t} type="button" onClick={() => set('pointsType', t)}
+                          <button key={t} type="button" onClick={() => !loading && set('pointsType', t)}
                             className={`flex-1 py-2.5 rounded-xl border font-semibold transition-all text-sm ${
                               formData.pointsType === t
                                 ? t === 'free' ? 'bg-green-600 text-white border-green-600' : 'bg-blue-600 text-white border-blue-600'
                                 : 'border-gray-200 text-gray-500 hover:border-gray-300'
-                            }`}>{t === 'free' ? 'Free' : 'Paid'}</button>
+                            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={loading}
+                          >{t === 'free' ? 'Free' : 'Paid'}</button>
                         ))}
                       </div>
                     </div>
@@ -464,13 +528,14 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                         <div className="relative">
                           <DollarSign size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                           <input name="points" type="number" min="1" value={formData.points} onChange={handleChange}
-                            className={`${inputCls(errors.points)} pl-9`} />
+                            className={`${inputCls(errors.points)} pl-9`} disabled={loading} />
                         </div>
                         {errors.points && <p className="text-xs text-red-500 mt-1">{errors.points}</p>}
                       </motion.div>
                     )}
-                    <button type="button" onClick={() => validate1() && setStep(2)}
-                      className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all mt-2">
+                    <button type="button" onClick={() => !loading && validate1() && setStep(2)}
+                      disabled={loading}
+                      className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
                       Next: Tags & Category →
                     </button>
                   </motion.div>
@@ -481,8 +546,10 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                       <div className="flex gap-3">
                         {[{ id: 'computer_engineering', label: 'CMPN' }, { id: 'information_technology', label: 'IT' }].map(b => (
                           <button key={b.id} type="button"
-                            onClick={() => setFormData(p => ({ ...p, branch: b.id, semester: '', subject: '' }))}
-                            className={toggleCls(formData.branch === b.id)}>{b.label}</button>
+                            onClick={() => !loading && setFormData(p => ({ ...p, branch: b.id, semester: '', subject: '' }))}
+                            className={`${toggleCls(formData.branch === b.id)} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={loading}
+                          >{b.label}</button>
                         ))}
                       </div>
                       {errors.branch && <p className="text-xs text-red-500 mt-1">{errors.branch}</p>}
@@ -493,8 +560,10 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                         <div className="flex gap-2 flex-wrap">
                           {[1,2,3,4].map(s => (
                             <button key={s} type="button"
-                              onClick={() => setFormData(p => ({ ...p, semester: s, subject: '' }))}
-                              className={pillCls(formData.semester === s)}>Sem {s}</button>
+                              onClick={() => !loading && setFormData(p => ({ ...p, semester: s, subject: '' }))}
+                              className={`${pillCls(formData.semester === s)} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              disabled={loading}
+                            >Sem {s}</button>
                           ))}
                         </div>
                         {errors.semester && <p className="text-xs text-red-500 mt-1">{errors.semester}</p>}
@@ -505,7 +574,10 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Subject <span className="text-red-500">*</span></label>
                         <div className="space-y-2">
                           {(subjectsByBranchAndSem[formData.branch]?.[formData.semester] || []).map(sub => (
-                            <button key={sub} type="button" onClick={() => set('subject', sub)} className={listCls(formData.subject === sub)}>{sub}</button>
+                            <button key={sub} type="button" onClick={() => !loading && set('subject', sub)} 
+                              className={`${listCls(formData.subject === sub)} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              disabled={loading}
+                            >{sub}</button>
                           ))}
                         </div>
                         {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject}</p>}
@@ -516,7 +588,10 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Module / Chapter <span className="text-red-500">*</span></label>
                         <div className="flex gap-2 flex-wrap">
                           {[1,2,3,4,5,6].map(m => (
-                            <button key={m} type="button" onClick={() => set('module', m)} className={pillCls(formData.module === m)}>Module {m}</button>
+                            <button key={m} type="button" onClick={() => !loading && set('module', m)}
+                              className={`${pillCls(formData.module === m)} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              disabled={loading}
+                            >Module {m}</button>
                           ))}
                         </div>
                         {errors.module && <p className="text-xs text-red-500 mt-1">{errors.module}</p>}
@@ -528,8 +603,10 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                         {resourceTypes.map(rt => {
                           const Icon = rt.icon;
                           return (
-                            <button key={rt.id} type="button" onClick={() => set('resourceType', rt.id)}
-                              className={`flex items-center gap-2 p-3 rounded-xl border font-medium text-sm transition-all ${formData.resourceType === rt.id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>
+                            <button key={rt.id} type="button" onClick={() => !loading && set('resourceType', rt.id)}
+                              className={`flex items-center gap-2 p-3 rounded-xl border font-medium text-sm transition-all ${formData.resourceType === rt.id ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-500 hover:border-gray-300'} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              disabled={loading}
+                            >
                               <Icon size={15} />{rt.label}
                             </button>
                           );
@@ -547,11 +624,12 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                       </div>
                     )}
                     <div className="flex gap-3">
-                      <button type="button" onClick={() => setStep(1)}
-                        className="flex-1 border border-gray-200 text-gray-600 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors">
+                      <button type="button" onClick={() => !loading && setStep(1)}
+                        disabled={loading}
+                        className="flex-1 border border-gray-200 text-gray-600 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         ← Back
                       </button>
-                      <button type="submit" disabled={loading}
+                      <button type="submit" disabled={loading || isSubmitting.current}
                         className="flex-1 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                         {loading ? <><Loader2 size={15} className="animate-spin" />Saving…</> : <><Upload size={15} />Upload (+10 pts)</>}
                       </button>
@@ -580,47 +658,27 @@ const MyNotes = () => {
   const [currentUser,    setCurrentUser]    = useState(null);
 
   const loadNotes = (uid) => {
-    setLoading(true);
-    setLoadError('');
+  setLoading(true);
+  setLoadError('');
 
-    // Use getDocs first (one-shot fetch) — more reliable than onSnapshot for initial load
-    // Then set up the live listener
-    const q = query(collection(db, 'notes'), where('uploadedBy', '==', uid));
+  const q = query(collection(db, 'notes'), where('uploadedBy', '==', uid));
 
-    // Initial one-shot fetch so notes show immediately even if listener is slow
-    getDocs(q)
-      .then(snap => {
-        const list = sortByDate(snap.docs.map(docToNote));
-        setNotes(list);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('getDocs error:', err);
-        setLoadError(err.message);
-        setLoading(false);
-      });
+  const unsub = onSnapshot(
+    q,
+    (snap) => {
+      const list = sortByDate(snap.docs.map(normalizeNote));
+      setNotes(list);
+      setLoading(false);
+    },
+    (err) => {
+      console.error('onSnapshot error:', err);
+      setLoadError(err.message);
+      setLoading(false);
+    }
+  );
 
-    // Live listener for real-time updates after initial load
-    const unsub = onSnapshot(q,
-      snap => {
-        const list = sortByDate(snap.docs.map(docToNote));
-        setNotes(list);
-        setLoading(false);
-      },
-      err => {
-        console.error('onSnapshot error:', err);
-        // Don't overwrite notes if we already loaded them via getDocs
-        setLoading(false);
-        // Only show error if we have no notes at all
-        setNotes(prev => {
-          if (prev.length === 0) setLoadError(err.message);
-          return prev;
-        });
-      }
-    );
-
-    return unsub;
-  };
+  return unsub;
+};
 
   useEffect(() => {
     const user = getUserFromStorage();
@@ -636,7 +694,6 @@ const MyNotes = () => {
 
     const unsubNotes = loadNotes(user.uid);
 
-    // Listen for points changes
     const unsubUser = onSnapshot(doc(db, 'users', user.uid),
       snap => {
         if (snap.exists()) {
@@ -649,7 +706,10 @@ const MyNotes = () => {
       err => console.warn('Points listener error:', err)
     );
 
-    return () => { unsubNotes(); unsubUser(); };
+    return () => { 
+      if (unsubNotes) unsubNotes(); 
+      if (unsubUser) unsubUser(); 
+    };
   }, []);
 
   const toggleSave = id => setNotes(prev => prev.map(n => n.id === id ? { ...n, saved: !n.saved } : n));
@@ -660,8 +720,8 @@ const MyNotes = () => {
     return { ...n, liked, likes: (n.likes || 0) + (liked ? 1 : -1) };
   }));
 
-  const handleUpload = (newNote, newPoints) => {
-    setNotes(prev => [newNote, ...prev]);
+  const handleUpload = (_newNote, newPoints) => {
+    // onSnapshot handles adding the new note automatically
     setUserPoints(newPoints);
   };
 
@@ -679,7 +739,7 @@ const MyNotes = () => {
 
   return (
     <>
-      <motion.div variants={stagger}  animate="show" className="space-y-6">
+      <motion.div variants={stagger} animate="show" className="space-y-6">
         {/* Header */}
         <motion.div variants={fadeUp}
           className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white relative overflow-hidden">
