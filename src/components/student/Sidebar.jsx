@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// 1. Import your logo from assets
+import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '../../firebase';
+
+// Import your logo from assets
 import logoImg from '../../assets/logo.png'; 
 
 import {
@@ -21,7 +26,38 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab, collapsed, setCollapsed }) => {
+  const navigate = useNavigate();
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [points, setPoints] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Get user from localStorage
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    // Real-time listener for user data from Firebase
+    const unsubscribe = onSnapshot(
+      doc(db, "users", user.uid),
+      (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          setUserData(data);
+          setPoints(data.points || 0);
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching user data:", error);
+        setLoading(false);
+      }
+    );
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   const menuItems = [
     { id: 'dashboard',      label: 'Dashboard',           icon: LayoutDashboard },
@@ -34,6 +70,22 @@ const Sidebar = ({ activeTab, setActiveTab, collapsed, setCollapsed }) => {
     { id: 'top-rated',      label: 'Top Rated Students', icon: Star             },
     { id: 'saved',          label: 'Saved Notes',         icon: Bookmark        },
   ];
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  // Calculate next badge progress (example: next badge at 500 points)
+  const nextBadgePoints = 500;
+  const progress = Math.min((points % nextBadgePoints) / nextBadgePoints * 100, 100);
+  const pointsToNextBadge = nextBadgePoints - (points % nextBadgePoints);
 
   return (
     <>
@@ -51,53 +103,49 @@ const Sidebar = ({ activeTab, setActiveTab, collapsed, setCollapsed }) => {
         <div className="absolute inset-0 bg-gradient-to-b from-blue-600/5 to-transparent pointer-events-none" />
 
         {/* Logo / toggle */}
-        {/* Logo / toggle */}
-<div
-  onClick={() => setCollapsed(!collapsed)}
-  className="h-20 flex items-center px-3 border-b border-gray-800 relative flex-shrink-0 cursor-pointer group"
->
-  <div className={`flex items-center gap-3 min-w-max ${collapsed ? 'w-full justify-center' : ''}`}>
-    <motion.div
-      whileHover={{ scale: 1.25 }}
-      whileTap={{ scale: 0.95 }}
-      className="w-10 h-10 bg-slate-950 rounded-xl shadow-lg border border-gray-800 flex items-center justify-center flex-shrink-0 group-hover:border-blue-500/50 transition-all overflow-hidden"
-    >
-      <img 
-        src={logoImg} 
-        alt="PrepStack Logo" 
-        className="w-8 h-8 object-contain" // object-contain ensures the logo doesn't stretch
-      />
-    </motion.div>
-
-    <AnimatePresence mode="wait">
-      {!collapsed && (
-        <motion.div
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -10 }}
-          className="whitespace-nowrap"
+        <div
+          onClick={() => setCollapsed(!collapsed)}
+          className="h-20 flex items-center px-3 border-b border-gray-800 relative flex-shrink-0 cursor-pointer group"
         >
-          <span className="text-white font-bold text-xl tracking-tight">PrepStack</span>
-          <span className="text-blue-400 text-[11px] block">Just The Best Notes.</span>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
+          <div className={`flex items-center gap-3 min-w-max ${collapsed ? 'w-full justify-center' : ''}`}>
+            <motion.div
+              whileHover={{ scale: 1.25 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-10 h-10 bg-slate-950 rounded-xl shadow-lg border border-gray-800 flex items-center justify-center flex-shrink-0 group-hover:border-blue-500/50 transition-all overflow-hidden"
+            >
+              <img 
+                src={logoImg} 
+                alt="PrepStack Logo" 
+                className="w-8 h-8 object-contain"
+              />
+            </motion.div>
 
-  {!collapsed && (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="absolute right-4 text-gray-500 group-hover:text-blue-400 transition-colors"
-    >
-      <ChevronLeft size={16} />
-    </motion.div>
-  )}
-</div>
+            <AnimatePresence mode="wait">
+              {!collapsed && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="whitespace-nowrap"
+                >
+                  <span className="text-white font-bold text-xl tracking-tight">PrepStack</span>
+                  <span className="text-blue-400 text-[11px] block">Just The Best Notes.</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-        {/* Rest of the component remains the same... */}
-        {/* User profile, Nav, and Footer sections follow */}
-        
+          {!collapsed && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute right-4 text-gray-500 group-hover:text-blue-400 transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </motion.div>
+          )}
+        </div>
+
         {/* User profile */}
         <div className="px-4 py-5 border-b border-gray-800 flex-shrink-0">
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-4'}`}>
@@ -116,11 +164,17 @@ const Sidebar = ({ activeTab, setActiveTab, collapsed, setCollapsed }) => {
                   exit={{ opacity: 0, x: -8 }}
                   className="overflow-hidden"
                 >
-                  <h3 className="text-white font-semibold text-sm truncate">Alex Johnson</h3>
-                  <p className="text-blue-400 text-xs font-medium">Computer Science · Sem 6</p>
+                  <h3 className="text-white font-semibold text-sm truncate">
+                    {userData?.username || user?.username || 'User'}
+                  </h3>
+                  <p className="text-blue-400 text-xs font-medium">
+                    {userData?.branch ? userData.branch.replace('_', ' ') : 'Student'} 
+                  </p>
                   <div className="flex items-center gap-1 mt-0.5">
                     <TrendingUp size={11} className="text-green-400" />
-                    <span className="text-xs text-gray-400">2,450 pts</span>
+                    <span className="text-xs text-gray-400">
+                      {loading ? '...' : `${points} pts`}
+                    </span>
                   </div>
                 </motion.div>
               )}
@@ -137,17 +191,21 @@ const Sidebar = ({ activeTab, setActiveTab, collapsed, setCollapsed }) => {
               >
                 <div className="flex items-center justify-between text-white mb-2">
                   <span className="text-xs opacity-80">Total Points</span>
-                  <span className="font-bold text-sm">2,450</span>
+                  <span className="font-bold text-sm">
+                    {loading ? '...' : points}
+                  </span>
                 </div>
                 <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: '75%' }}
+                    animate={{ width: `${progress}%` }}
                     transition={{ delay: 0.5, duration: 1 }}
                     className="h-full bg-white rounded-full"
                   />
                 </div>
-                <p className="text-white/50 text-[10px] mt-1.5">Next badge in 550 pts</p>
+                <p className="text-white/50 text-[10px] mt-1.5">
+                  Next badge in {pointsToNextBadge} pts
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -229,7 +287,10 @@ const Sidebar = ({ activeTab, setActiveTab, collapsed, setCollapsed }) => {
             <Settings size={20} className="flex-shrink-0" />
             {!collapsed && <span className="text-sm font-medium whitespace-nowrap">Settings</span>}
           </button>
-          <button className={`w-full flex items-center ${collapsed ? 'justify-center' : 'px-4 gap-3'} h-11 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all overflow-hidden group`}>
+          <button 
+            onClick={handleSignOut}
+            className={`w-full flex items-center ${collapsed ? 'justify-center' : 'px-4 gap-3'} h-11 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all overflow-hidden group`}
+          >
             <LogOut size={20} className="flex-shrink-0" />
             {!collapsed && <span className="text-sm font-medium whitespace-nowrap">Sign Out</span>}
           </button>

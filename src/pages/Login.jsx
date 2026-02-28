@@ -2,9 +2,17 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Mail, Lock, User, Phone, Briefcase, GraduationCap,
-  Fingerprint, Loader2, ChevronRight, AlertCircle, CheckCircle
+  Mail, Lock, User, Briefcase, BookOpen,
+  Loader2, AlertCircle
 } from "lucide-react";
+
+// Firebase Imports
+import { auth, db } from "../firebase";
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword 
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 // Robust Lottie Import
 import LottieComponent from "lottie-react";
@@ -13,7 +21,7 @@ const Lottie = LottieComponent.default ?? LottieComponent;
 // Assets
 import animationData from "../assets/loginScreen.json";
 import gradientBgData from "../assets/Background 3d stroke.json";
-import successAnimation from "../assets/succes.json"; // You can use any success animation
+import successAnimation from "../assets/succes.json";
 import LogoPng from "../assets/logo.png";
 
 const Login = () => {
@@ -24,9 +32,15 @@ const Login = () => {
   const [showLogo, setShowLogo] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const [loginData, setLoginData] = useState({ identifier: "", password: "" }); // Changed from email to identifier
+  // Updated state: login uses email instead of username
+  const [loginData, setLoginData] = useState({ email: "", password: "" });
   const [signupData, setSignupData] = useState({
-    role: "", id: "", fullName: "", phone: "", email: "", password: "", confirmPassword: ""
+    role: "", 
+    username: "", 
+    email: "", 
+    password: "", 
+    confirmPassword: "",
+    branch: "" // Added branch field
   });
 
   useEffect(() => {
@@ -35,8 +49,6 @@ const Login = () => {
     }, 2500);
     return () => clearTimeout(timer);
   }, []);
-
-  const API_URL = "http://localhost:5000/api/auth";
 
   const toggleAuth = () => {
     setIsLogin(!isLogin);
@@ -56,42 +68,87 @@ const Login = () => {
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: "" }));
   };
 
+  const validateEmail = (email) => {
+    return email.endsWith('@slrtce.in');
+  };
+
+  // 🔥 FIREBASE LOGIN HANDLER
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrors({});
+    
     try {
-      const res = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          identifier: loginData.identifier, // Can be email or college_id
-          password: loginData.password 
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
+      // Sign in with Firebase Auth
+      const userCredential = await signInWithEmailAndPassword(
+        auth, 
+        loginData.email, 
+        loginData.password
+      );
+      const user = userCredential.user;
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      // Get user data from Firestore
+      const userDoc = await getDoc(doc(db, "users", user.uid));
       
-      // Redirect based on role
-      const role = data.user.role.toUpperCase();
-      if (role === "ADMIN") {
-        navigate("/admin");
-      } else if (role === "FACULTY") {
-        navigate("/faculty");
-      } else if (role === "STUDENT") {
-        navigate("/student");
+      if (!userDoc.exists()) {
+        throw new Error("User data not found");
       }
-    } catch (err) {
-      setErrors({ submit: err.message });
-    } finally { setIsLoading(false); }
+
+      const userData = userDoc.data();
+
+      // Store ONLY basic user info in localStorage (NO points)
+      localStorage.setItem("token", await user.getIdToken());
+      localStorage.setItem("user", JSON.stringify({
+        uid: user.uid,
+        email: user.email,
+        role: userData.role,
+        username: userData.username,
+        branch: userData.branch || null
+        // ❌ Points are NOT stored in localStorage - they will be fetched in real-time
+      }));
+
+      // Redirect based on role
+      if (userData.role === "student") {
+        navigate("/student");
+      } else if (userData.role === "faculty") {
+        navigate("/faculty");
+      } else {
+        throw new Error("Invalid user role");
+      }
+
+    } catch (error) {
+      console.error("Login error:", error);
+      
+      // Handle specific Firebase errors
+      let errorMessage = "Invalid email or password";
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account found with this email";
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect password";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email format";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many failed attempts. Try again later";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setErrors({ submit: errorMessage });
+    }
+    
+    setIsLoading(false);
   };
 
+  // 🔥 FIREBASE SIGNUP HANDLER - WITH 100 POINTS
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
     
     // Validation
+    if (!validateEmail(signupData.email)) {
+      setErrors({ email: "Email must be from @slrtce.in domain" });
+      return;
+    }
+    
     if (signupData.password !== signupData.confirmPassword) {
       setErrors({ confirmPassword: "Passwords do not match" });
       return;
@@ -102,38 +159,103 @@ const Login = () => {
       return;
     }
 
+    if (!signupData.role) {
+      setErrors({ role: "Please select a role" });
+      return;
+    }
+
+    if (!signupData.username) {
+      setErrors({ username: "Username is required" });
+      return;
+    }
+
+    // Branch validation for students
+    if (signupData.role === "student" && !signupData.branch) {
+      setErrors({ branch: "Please select your branch" });
+      return;
+    }
+
     setIsLoading(true);
+    setErrors({});
+    
     try {
-      const res = await fetch(`${API_URL}/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          college_id: signupData.id,
-          name: signupData.fullName,
-          email: signupData.email,
-          phone: signupData.phone,
-          password: signupData.password,
-          role: signupData.role.toLowerCase()
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Signup failed");
-      
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        signupData.email, 
+        signupData.password
+      );
+      const user = userCredential.user;
+
+      // Create user document in Firestore with 100 points
+      const userData = {
+        username: signupData.username,
+        role: signupData.role,
+        email: signupData.email,
+        createdAt: new Date().toISOString(),
+        uid: user.uid,
+        
+        // ✅ POINTS STORED IN FIREBASE (not localStorage)
+        points: 100, // Give 100 points to new users
+        
+        // Track points history for transparency
+        pointsHistory: [{
+          amount: 100,
+          type: 'signup_bonus',
+          description: 'Welcome bonus for joining PrepStack',
+          timestamp: new Date().toISOString()
+        }],
+        
+        // Optional: Track totals
+        totalPointsEarned: 100,
+        totalPointsSpent: 0
+      };
+
+      // Add branch only for students
+      if (signupData.role === "student") {
+        userData.branch = signupData.branch;
+      }
+
+      // ✅ SAVE TO FIRESTORE (this is the source of truth)
+      await setDoc(doc(db, "users", user.uid), userData);
+
       // Show success animation
       setShowSuccess(true);
       
-      // Auto redirect to login after 2 seconds
+      // Reset form and switch to login after success
       setTimeout(() => {
         setShowSuccess(false);
         setIsLogin(true);
         setSignupData({
-          role: "", id: "", fullName: "", phone: "", email: "", password: "", confirmPassword: ""
+          role: "", 
+          username: "", 
+          email: "", 
+          password: "", 
+          confirmPassword: "",
+          branch: ""
         });
+        setLoginData({ email: "", password: "" });
       }, 2000);
+
+    } catch (error) {
+      console.error("Signup error:", error);
       
-    } catch (err) {
-      setErrors({ submit: err.message });
-    } finally { setIsLoading(false); }
+      // Handle specific Firebase errors
+      let errorMessage = "Signup failed. Please try again.";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "Email already in use";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email format";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Password is too weak (minimum 6 characters)";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setErrors({ submit: errorMessage });
+    }
+    
+    setIsLoading(false);
   };
 
   return (
@@ -261,61 +383,71 @@ const Login = () => {
                       animate={{ opacity: 1, height: "auto" }} 
                       className="space-y-3"
                     >
+                      {/* Role Selection */}
                       <div className="relative">
                         <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16}/>
                         <select 
                           name="role"
                           value={signupData.role}
                           onChange={handleSignupChange}
-                          className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-semibold outline-none focus:border-indigo-400 focus:bg-white transition-all appearance-none"
+                          className={`w-full pl-11 pr-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none focus:border-indigo-400 focus:bg-white transition-all appearance-none text-slate-800 ${errors.role ? 'border-red-400' : 'border-slate-100'}`}
                           required
                         >
-                          <option value="">Select Role</option>
-                          <option value="admin">Admin</option>
-                          <option value="faculty">Faculty</option>
-                          <option value="student">Student</option>
+                          <option value="" className="text-slate-400">Select Role</option>
+                          <option value="student" className="text-slate-800">Student</option>
+                          <option value="faculty" className="text-slate-800">Faculty</option>
                         </select>
                       </div>
+                      {errors.role && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">{errors.role}</p>}
 
+                      {/* Username */}
                       <FormInput 
-                        name="id" placeholder="College/University ID" icon={<Fingerprint size={16}/>} 
-                        value={signupData.id} onChange={handleSignupChange} error={errors.id} 
+                        name="username" 
+                        placeholder="Username" 
+                        icon={<User size={16}/>} 
+                        value={signupData.username} 
+                        onChange={handleSignupChange} 
+                        error={errors.username} 
                         required
                       />
-                      <FormInput 
-                        name="fullName" placeholder="Full Name" icon={<User size={16}/>} 
-                        value={signupData.fullName} onChange={handleSignupChange} error={errors.fullName} 
-                        required
-                      />
-                      <FormInput 
-                        name="phone" placeholder="Phone Number" icon={<Phone size={16}/>} 
-                        value={signupData.phone} onChange={handleSignupChange} error={errors.phone}
-                        required
-                      />
+
+                      {/* Branch Selection - Only for students */}
+                      {signupData.role === "student" && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                        >
+                          <div className="relative">
+                            <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16}/>
+                            <select 
+                              name="branch"
+                              value={signupData.branch}
+                              onChange={handleSignupChange}
+                              className={`w-full pl-11 pr-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none focus:border-indigo-400 focus:bg-white transition-all appearance-none text-slate-800 ${errors.branch ? 'border-red-400' : 'border-slate-100'}`}
+                              required={signupData.role === "student"}
+                            >
+                              <option value="" className="text-slate-400">Select Branch</option>
+                              <option value="computer_engineering" className="text-slate-800">Computer Engineering</option>
+                              <option value="information_technology" className="text-slate-800">Information Technology</option>
+                            </select>
+                          </div>
+                          {errors.branch && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">{errors.branch}</p>}
+                        </motion.div>
+                      )}
                     </motion.div>
                   )}
 
-                  {isLogin ? (
-                    <FormInput 
-                      name="identifier" 
-                      placeholder="Email or College ID" 
-                      icon={<User size={16}/>} 
-                      value={loginData.identifier} 
-                      onChange={handleLoginChange} 
-                      error={errors.identifier}
-                      required
-                    />
-                  ) : (
-                    <FormInput 
-                      name="email" 
-                      placeholder="Email" 
-                      icon={<Mail size={16}/>} 
-                      value={signupData.email} 
-                      onChange={handleSignupChange} 
-                      error={errors.email}
-                      required
-                    />
-                  )}
+                  {/* Email field - always show for both login and signup */}
+                  <FormInput 
+                    name={isLogin ? "email" : "email"}
+                    placeholder={isLogin ? "Email (@slrtce.in)" : "Email (@slrtce.in)"}
+                    icon={<Mail size={16}/>} 
+                    value={isLogin ? loginData.email : signupData.email} 
+                    onChange={isLogin ? handleLoginChange : handleSignupChange} 
+                    error={errors.email}
+                    required
+                  />
 
                   <FormInput 
                     name="password" 
@@ -401,7 +533,7 @@ const FormInput = ({ icon, error, required, ...props }) => (
       <input 
         {...props}
         required={required}
-        className={`w-full pl-11 pr-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none transition-all ${error ? 'border-red-400' : 'border-slate-100 focus:border-indigo-400 focus:bg-white'}`}
+        className={`w-full pl-11 pr-4 py-2.5 bg-slate-50 border rounded-xl text-xs font-semibold outline-none transition-all text-slate-800 placeholder:text-slate-400 ${error ? 'border-red-400' : 'border-slate-100 focus:border-indigo-400 focus:bg-white'}`}
       />
     </div>
     {error && <p className="text-[10px] text-red-500 font-bold mt-1 ml-1">{error}</p>}
