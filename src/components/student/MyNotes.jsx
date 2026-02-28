@@ -679,7 +679,7 @@ const MyNotes = () => {
 
   return (
     <>
-      <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+      <motion.div variants={stagger}  animate="show" className="space-y-6">
         {/* Header */}
         <motion.div variants={fadeUp}
           className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white relative overflow-hidden">
