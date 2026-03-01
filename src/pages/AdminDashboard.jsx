@@ -774,7 +774,7 @@ const AdminDashboard = ({ onSignOut }) => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-7">
+      <main className="max-w mx-auto px-4 sm:px-6 py-7">
         <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-5">
 
           {/* Stats */}
