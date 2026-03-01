@@ -877,15 +877,28 @@ const BestNotes = () => {
   }, []); // empty deps — subscribe once, never re-subscribe
 
   // ── Like handler ──
+  // Liking gives the note uploader +5 points atomically; unliking removes them.
   const handleLike = useCallback(async (noteId, currentlyLiked) => {
     if (!currentUser) { alert('Please log in to like notes.'); return; }
-    const ref = doc(db, 'notes', noteId);
     try {
-      if (currentlyLiked) {
-        await updateDoc(ref, { upvotes: increment(-1), likedBy: arrayRemove(currentUser.uid) });
-      } else {
-        await updateDoc(ref, { upvotes: increment(1), likedBy: arrayUnion(currentUser.uid) });
-      }
+      const noteRef = doc(db, 'notes', noteId);
+      await runTransaction(db, async (tx) => {
+        const noteSnap = await tx.get(noteRef);
+        if (!noteSnap.exists()) throw new Error('Note not found');
+        const uploadedBy = noteSnap.data().uploadedBy;
+
+        if (currentlyLiked) {
+          tx.update(noteRef, { upvotes: increment(-1), likedBy: arrayRemove(currentUser.uid) });
+          if (uploadedBy && uploadedBy !== currentUser.uid) {
+            tx.update(doc(db, 'users', uploadedBy), { points: increment(-5) });
+          }
+        } else {
+          tx.update(noteRef, { upvotes: increment(1), likedBy: arrayUnion(currentUser.uid) });
+          if (uploadedBy && uploadedBy !== currentUser.uid) {
+            tx.update(doc(db, 'users', uploadedBy), { points: increment(5) });
+          }
+        }
+      });
     } catch (err) { console.error('Like error:', err); alert('Failed to update like.'); }
   }, [currentUser]);
 
