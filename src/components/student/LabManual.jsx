@@ -13,6 +13,9 @@ const LABS = [
   { id:4, title:'DSA Lab Manual 2024',      subject:'DSA',     experiments:14, upvotes:154, downloads:698,  verified:true,  color:'from-violet-500 to-violet-600'  },
   { id:5, title:'Web Tech Lab Manual',      subject:'WT',      experiments:10, upvotes:134, downloads:654,  verified:false, color:'from-cyan-500 to-cyan-600'      },
   { id:6, title:'Python Lab Manual 2024',   subject:'Python',  experiments:12, upvotes:121, downloads:598,  verified:true,  color:'from-teal-500 to-teal-600'      },
+  { id:7, title:'AOA Lab Manual 2024',      subject:'AOA',     experiments:10, upvotes:334, downloads:987,  verified:true,  color:'from-purple-500 to-purple-600' },
+  { id:2, title:'OOPs Lab Manual 2024',     subject:'OOPs',    experiments:10, upvotes:198, downloads:876,  verified:true,  color:'from-blue-500 to-blue-600'     },
+  { id:3, title:'MAM Lab Manual 2024',       subject:'MAM',    experiments:8,  upvotes:176, downloads:765,  verified:false, color:'from-indigo-500 to-indigo-600'  },
 ];
 
 const LabCard = memo(({ lab }) => {

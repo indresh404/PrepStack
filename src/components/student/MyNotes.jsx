@@ -3,7 +3,7 @@ import React, { useState, useEffect, memo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Bookmark, Upload, Search, Clock, Eye, Heart,
-  X, FileText, DollarSign, Layers, Tag,
+  X, FileText, Star, Layers, Tag,
   AlertCircle, Loader2, CheckCircle, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw
 } from 'lucide-react';
 import {
@@ -275,7 +275,7 @@ const NoteCard = memo(({ note, onToggleSave, onToggleLike, onRead }) => {
 
         {note.pointsType === 'paid' && (
           <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">
-            <DollarSign size={11} /> {note.points} pts required
+            <Star size={11} /> {note.points} pts required
           </div>
         )}
       </div>
@@ -526,7 +526,7 @@ const UploadForm = ({ onClose, onUpload, userId }) => {
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">Points required <span className="text-red-500">*</span></label>
                         <div className="relative">
-                          <DollarSign size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <Star size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                           <input name="points" type="number" min="1" value={formData.points} onChange={handleChange}
                             className={`${inputCls(errors.points)} pl-9`} disabled={loading} />
                         </div>

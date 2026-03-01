@@ -15,6 +15,14 @@ const PYQS = [
   { id:6, title:'SE Mid-Sem 2022',      subject:'SE',   year:2022, sem:'Mid-Sem', upvotes:154, downloads:765,  verified:false },
   { id:7, title:'DBMS End-Sem 2022',    subject:'DBMS', year:2022, sem:'End-Sem', upvotes:145, downloads:698,  verified:true  },
   { id:8, title:'OS End-Sem 2022',      subject:'OS',   year:2022, sem:'End-Sem', upvotes:134, downloads:654,  verified:false },
+  { id:9, title:'CN End-Sem 2022',     subject:'CN',  year:2023, sem:'End-Sem', upvotes:264, downloads:1100,  verified:true  },
+  { id:10, title:'DSA Mid-Sem 2021',     subject:'DSA',  year:2023, sem:'Mid-Sem', upvotes:188, downloads:987,  verified:false },
+  { id:11, title:'TOC Mid-Sem 2024',     subject:'TOC',  year:2023, sem:'End-Sem', upvotes:176, downloads:876,  verified:true  },
+  { id:12, title:'SE End-Sem 2021',      subject:'SE',   year:2022, sem:'Mid-Sem', upvotes:144, downloads:765,  verified:false },
+  { id:13, title:'DBMS End-Sem 2021',    subject:'DBMS', year:2022, sem:'End-Sem', upvotes:145, downloads:698,  verified:true  },
+  { id:14, title:'OS Mid-Sem 2023',      subject:'OS',   year:2022, sem:'End-Sem', upvotes:124, downloads:654,  verified:false },
+  { id:15, title:'SE Mid-Sem 2021',      subject:'SE',   year:2022, sem:'Mid-Sem', upvotes:154, downloads:765,  verified:true },
+  
 ];
 
 const SUBJECTS = ['All', 'DBMS', 'OS', 'CN', 'DSA', 'TOC', 'SE'];
