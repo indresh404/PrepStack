@@ -146,6 +146,8 @@ const Login = () => {
         errorMessage = "Incorrect password";
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = "Invalid email format";
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid email or password. Please check your credentials.";
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = "Too many failed attempts. Try again later";
       } else if (error.message) {
@@ -395,7 +397,8 @@ const Login = () => {
                   {isLogin ? "Sign in to your account" : "Create a new account"}
                 </p>
 
-                <form className="space-y-3" onSubmit={handleLoginSubmit}>
+                {/* ✅ FIX: Use correct handler based on isLogin state */}
+                <form className="space-y-3" onSubmit={isLogin ? handleLoginSubmit : handleSignupSubmit}>
                   {!isLogin && (
                     <motion.div 
                       initial={{ opacity: 0, height: 0 }} 

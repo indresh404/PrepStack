@@ -74,7 +74,7 @@ const PYQs = () => {
   );
 
   return (
-    <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+    <motion.div variants={stagger} animate="show" className="space-y-6">
       <motion.div variants={fadeUp} className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">

@@ -69,7 +69,7 @@ const TrophyLottie = memo(() => {
       loop={false}
       autoplay={true}
       onComplete={handleComplete}
-      style={{ width: 150, height: 150 }}
+      style={{ width: 200, height: 200 }}
     />
   );
 });
@@ -125,10 +125,71 @@ const StatCard = memo(({ icon: Icon, label, value, trend, color, delay = 0 }) =>
 });
 
 
-const PointsBarGraph = memo(({ data }) => {
-  const maxPoints = useMemo(() => {
-    if (!data || data.length === 0) return 0;
-    return Math.max(...data.map(d => d.points || 0));
+const PointsBarGraph = ({ data }) => {
+  // Remove useMemo or add data as dependency properly
+  const [maxPoints, setMaxPoints] = useState(0);
+  
+  // Track previous data for animation
+  const prevDataRef = useRef(data);
+  const [changedStudentIds, setChangedStudentIds] = useState(new Set());
+  const [dataChanged, setDataChanged] = useState(false);
+
+  // Update maxPoints whenever data changes
+  useEffect(() => {
+    if (data && data.length > 0) {
+      const max = Math.max(...data.map(d => d.points || 0));
+      setMaxPoints(max);
+    } else {
+      setMaxPoints(0);
+    }
+  }, [data]);
+
+  // Detect changes in student points
+  useEffect(() => {
+    const prevData = prevDataRef.current;
+    const newChangedIds = new Set();
+    
+    if (prevData && data && prevData !== data) {
+      // Check for point changes by comparing each student
+      data.forEach(student => {
+        const prevStudent = prevData.find(s => s.id === student.id);
+        if (prevStudent && prevStudent.points !== student.points) {
+          newChangedIds.add(student.id);
+        }
+      });
+      
+      // Check for new students
+      data.forEach(student => {
+        const exists = prevData.some(s => s.id === student.id);
+        if (!exists) {
+          newChangedIds.add(student.id);
+        }
+      });
+      
+      // Check for removed students (optional)
+      prevData.forEach(prevStudent => {
+        const exists = data.some(s => s.id === prevStudent.id);
+        if (!exists) {
+          // Student removed, you might want to handle this
+        }
+      });
+    }
+    
+    if (newChangedIds.size > 0) {
+      console.log('Points changed for students:', Array.from(newChangedIds)); // Debug log
+      setChangedStudentIds(newChangedIds);
+      setDataChanged(true);
+      
+      // Clear animation flags after animation completes
+      const timer = setTimeout(() => {
+        setChangedStudentIds(new Set());
+        setDataChanged(false);
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+    
+    prevDataRef.current = data;
   }, [data]);
 
   // If no data, show empty state
@@ -160,13 +221,23 @@ const PointsBarGraph = memo(({ data }) => {
           <h3 className="font-semibold text-gray-800">Points Leaderboard</h3>
         </div>
         <div className="flex items-center gap-2">
+          {/* Live indicator - pulses when data updates */}
+          <motion.div
+            key={dataChanged ? 'changed' : 'stable'}
+            animate={dataChanged ? { 
+              scale: [1, 1.3, 1],
+              backgroundColor: ['#22c55e', '#3b82f6', '#22c55e']
+            } : { scale: 1 }}
+            transition={{ duration: 1.5 }}
+            className="w-2 h-2 bg-green-500 rounded-full"
+          />
           <span className="text-xs text-gray-400">This Month · {data.length} students</span>
           <Sparkles size={13} className="text-yellow-400" />
         </div>
       </div>
 
-      {/* Scrollable container for 15 users */}
-      <div className="max-h-[500px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+      {/* Scrollable container */}
+      <div className="max-h-[900px] overflow-y-auto pr-2 space-y-3 custom-scrollbar">
         {data.map((student, index) => {
           const barColor = index === 0 ? 'from-yellow-400 to-yellow-500' :
                           index === 1 ? 'from-slate-400 to-slate-500' :
@@ -183,49 +254,115 @@ const PointsBarGraph = memo(({ data }) => {
                           index === 2 ? <Medal size={11} /> : 
                           <span className="text-[10px] font-bold">{index + 1}</span>;
 
+          const hasChanged = changedStudentIds.has(student.id);
+          const widthPercentage = maxPoints > 0 ? (student.points / maxPoints) * 100 : 0;
+
           return (
             <motion.div
               key={student.id || student.name || index}
               variants={fadeUp}
               initial="hidden"
               animate="show"
-              transition={{ delay: Math.min(index * 0.03, 0.5) }} // Cap delay to prevent too long
-              className="flex items-center gap-3 group hover:bg-gray-50 p-2 rounded-lg transition-colors"
+              transition={{ delay: Math.min(index * 0.03, 0.5) }}
+              className="relative"
             >
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs border flex-shrink-0 ${rankBg}`}>
-                {rankIcon}
-              </div>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                <User size={13} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-700 truncate group-hover:text-gray-900">
-                    {student.name || student.username || 'Anonymous Student'}
-                  </span>
-                  <span className="text-sm font-bold text-blue-600 ml-2 flex-shrink-0 group-hover:text-blue-700">
-                    {student.points?.toLocaleString() || 0} pts
-                  </span>
-                </div>
-                <div className="h-2 bg-blue-50 rounded-full overflow-hidden">
+              {/* Highlight animation for changed items */}
+              <AnimatePresence>
+                {hasChanged && (
                   <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(student.points / maxPoints) * 100}%` }}
-                    transition={{ delay: Math.min(index * 0.05, 0.4), duration: 0.7, ease: "easeOut" }}
-                    className={`h-full rounded-full bg-gradient-to-r ${barColor}`}
+                    initial={{ opacity: 0.5, scale: 0.95 }}
+                    animate={{ opacity: 0, scale: 1.02 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 1.2 }}
+                    className="absolute inset-0 bg-blue-100 rounded-lg pointer-events-none z-0"
                   />
+                )}
+              </AnimatePresence>
+
+              <div className="flex items-center gap-3 group hover:bg-gray-50 p-2 rounded-lg transition-colors relative z-10">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs border flex-shrink-0 ${rankBg}`}>
+                  {rankIcon}
                 </div>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                  <User size={13} className="text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700 truncate group-hover:text-gray-900">
+                      {student.name || student.username || 'Anonymous Student'}
+                    </span>
+                    <motion.span
+                      key={`${student.id}-points-${student.points}`}
+                      animate={hasChanged ? { 
+                        scale: [1, 1.3, 1],
+                        color: ['#3b82f6', '#2563eb', '#3b82f6']
+                      } : { scale: 1 }}
+                      transition={{ duration: 0.5 }}
+                      className="text-sm font-bold text-blue-600 ml-2 flex-shrink-0 group-hover:text-blue-700"
+                    >
+                      {student.points?.toLocaleString() || 0} pts
+                    </motion.span>
+                  </div>
+                  <div className="h-2 bg-blue-50 rounded-full overflow-hidden">
+                    <motion.div
+                      key={`${student.id}-bar-${student.points}`}
+                      initial={false}
+                      animate={{ width: `${widthPercentage}%` }}
+                      transition={{ 
+                        type: 'spring', 
+                        stiffness: 100, 
+                        damping: 20,
+                        delay: hasChanged ? 0.1 : 0
+                      }}
+                      className={`h-full rounded-full bg-gradient-to-r ${barColor}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Small indicator for point increase */}
+                <AnimatePresence>
+                  {hasChanged && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      className="absolute -right-1 -top-1"
+                    >
+                      <div className="w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
+                        <motion.div
+                          animate={{ scale: [1, 1.5, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                          className="w-1.5 h-1.5 bg-white rounded-full"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Show total count */}
-      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+      {/* Show total count with animation on change */}
+      <motion.div 
+        animate={dataChanged ? { 
+          backgroundColor: ['#ffffff', '#f0f9ff', '#ffffff'],
+          scale: [1, 1.02, 1]
+        } : {}}
+        transition={{ duration: 1 }}
+        className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400 p-2 rounded-lg"
+      >
         <span>Total Students: {data.length}</span>
-        <span className="font-medium text-blue-600">Top Score: {maxPoints.toLocaleString()}</span>
-      </div>
+        <motion.span 
+          key={`max-${maxPoints}`}
+          animate={dataChanged ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="font-medium text-blue-600"
+        >
+          Top Score: {maxPoints.toLocaleString()}
+        </motion.span>
+      </motion.div>
 
       {/* Custom scrollbar styles */}
       <style jsx>{`
@@ -246,82 +383,394 @@ const PointsBarGraph = memo(({ data }) => {
       `}</style>
     </Card>
   );
-});
+};
 
 // ─── AchievementCard ──────────────────────────────────
-const AchievementCard = memo(({ userData }) => (
-  <Card className="p-6">
-    <div className="flex items-center gap-2 mb-4">
-      <Target size={20} className="text-blue-600" />
-      <h3 className="font-semibold text-gray-800">Your Achievement</h3>
-    </div>
+// ─── Move staticBadges OUTSIDE component to prevent re-creation on every render
+const STATIC_BADGES = [
+  { name: 'Early Bird',       icon: Award,      bgColor: 'bg-orange-50 border-orange-200',  color: 'text-orange-500',  points: 200  },
+  { name: 'Super Star',       icon: Star,       bgColor: 'bg-yellow-50 border-yellow-200',  color: 'text-yellow-500',  points: 400  },
+  { name: 'Speed Demon',      icon: Zap,        bgColor: 'bg-purple-50 border-purple-200',  color: 'text-purple-500',  points: 600  },
+  { name: 'Knowledge Seeker', icon: BookOpen,   bgColor: 'bg-blue-50 border-blue-200',      color: 'text-blue-500',    points: 800  },
+  { name: 'Rising Star',      icon: TrendingUp, bgColor: 'bg-green-50 border-green-200',    color: 'text-green-500',   points: 1000 },
+  { name: 'Mastermind',       icon: Brain,      bgColor: 'bg-indigo-50 border-indigo-200',  color: 'text-indigo-500',  points: 1200 },
+  { name: 'Champion',         icon: Crown,      bgColor: 'bg-amber-50 border-amber-200',    color: 'text-amber-500',   points: 1350 },
+  { name: 'Legend',           icon: Flame,      bgColor: 'bg-red-50 border-red-200',        color: 'text-red-500',     points: 1500 },
+];
 
-    <div className="text-center mb-5">
-      <div className="flex justify-center mb-2 relative">
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-200 to-amber-200 blur-2xl opacity-60" />
-        </div>
+// ─── AchievementCard ──────────────────────────────────
+const AchievementCard = memo(({ userData }) => {
+  const currentPoints = userData?.points || 0;
+
+  const achievedBadges = useMemo(() =>
+    STATIC_BADGES.filter(b => b.points <= currentPoints),
+    [currentPoints]
+  );
+
+  const nextBadge = useMemo(() =>
+    STATIC_BADGES.find(b => b.points > currentPoints) || STATIC_BADGES[STATIC_BADGES.length - 1],
+    [currentPoints]
+  );
+
+  const prevBadge = useMemo(() =>
+    achievedBadges[achievedBadges.length - 1] || { points: 0 },
+    [achievedBadges]
+  );
+
+  const progressPercentage = useMemo(() => {
+    if (nextBadge.points === prevBadge.points) return 100;
+    return Math.min(
+      ((currentPoints - prevBadge.points) / (nextBadge.points - prevBadge.points)) * 100,
+      100
+    );
+  }, [currentPoints, nextBadge.points, prevBadge.points]);
+
+  const [hoveredBadge,    setHoveredBadge]    = useState(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevPointsRef = useRef(currentPoints);
+
+  // Fix: use ref to track previous points, avoid stale closure / dep loop
+  useEffect(() => {
+    const prev = prevPointsRef.current;
+    if (currentPoints > prev) {
+      const newlyAchieved = STATIC_BADGES.find(
+        b => b.points > prev && b.points <= currentPoints
+      );
+      if (newlyAchieved) {
+        setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 3000);
+      }
+    }
+    prevPointsRef.current = currentPoints;
+  }, [currentPoints]);
+
+  return (
+    // Use relative + overflow-visible so tooltip doesn't clip
+    <Card className="p-6 relative overflow-visible">
+
+      {/* ── Celebration overlay ── */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            // overflow-hidden + rounded so it clips inside card bounds
+            className="absolute inset-0 bg-gradient-to-br from-yellow-400 via-orange-400 to-purple-500 z-50 flex items-center justify-center rounded-2xl overflow-hidden"
+          >
+            <motion.div
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0,  opacity: 1 }}
+              transition={{ type: 'spring', damping: 14 }}
+              className="text-white text-center px-4"
+            >
+              <div className="w-24\ h-24 mx-auto">
+                <TrophyLottie />
+              </div>
+              <h3 className="text-2xl font-bold mt-2">Badge Unlocked!</h3>
+              <p className="text-lg font-semibold mt-1 opacity-90">{nextBadge.name}</p>
+              <motion.p
+                className="mt-2 text-sm opacity-80"
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                🎉 Keep going!
+              </motion.p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Header ── */}
+      <div className="flex items-center gap-2 mb-4">
+        <Target size={20} className="text-blue-600" />
+        <h3 className="font-semibold text-gray-800 text-base">Your Achievement</h3>
+      </div>
+
+      {/* ── Trophy + Points ── */}
+      {/* ── Trophy + Points ── */}
+<div className="text-center mb-5">
+  <div className="flex justify-center mb-2 relative">
+    {/* Glow behind trophy */}
+    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <motion.div
+        animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
+        transition={{ duration: 2.5, repeat: Infinity }}
+        className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-200 to-amber-300 blur-2xl"
+      />
+    </div>
+    
+    {/* Trophy container - properly centered */}
+    <div className="relative z-10 flex items-center justify-center" style={{ width: 100, height: 100 }}>
+      <div className="w-[200px] h-[200px] flex items-center justify-center">
         <TrophyLottie />
       </div>
-      <h4 className="text-3xl font-bold text-gray-800">{userData?.points?.toLocaleString() || 0}</h4>
-      <p className="text-gray-400 text-sm mt-0.5">Total Points</p>
     </div>
+  </div>
 
-    <div className="space-y-3">
-      <div>
-        <div className="flex justify-between text-sm mb-1.5">
-          <span className="text-gray-500">This Week</span>
-          <span className="text-gray-800 font-bold">{userData?.weeklyPoints || 0} pts</span>
-        </div>
-        <div className="h-2.5 bg-blue-50 rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${((userData?.weeklyPoints || 0) / 1000) * 100}%` }}
-            transition={{ delay: 0.5, duration: 1 }}
-            className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full"
-          />
-        </div>
-      </div>
-      <div>
-        <div className="flex justify-between text-sm mb-1.5">
-          <span className="text-gray-500">Monthly Goal</span>
-          <span className="text-gray-800 font-bold">{userData?.points || 0} / 3,000</span>
-        </div>
-        <div className="h-2.5 bg-blue-50 rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${((userData?.points || 0) / 3000) * 100}%` }}
-            transition={{ delay: 0.7, duration: 1 }}
-            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full"
-          />
-        </div>
-      </div>
-    </div>
+  <motion.h4
+    key={currentPoints}
+    initial={{ scale: 1.3, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    transition={{ type: 'spring', stiffness: 200 }}
+    className="text-4xl font-bold text-gray-800 leading-none"
+  >
+    {currentPoints.toLocaleString()}
+  </motion.h4>
+  <p className="text-gray-400 text-xs mt-1">Total Points</p>
+</div>
 
-    <div className="mt-5">
-      <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Recent Badges</p>
-      <div className="flex gap-2">
-        {userData?.badges?.slice(0, 3).map((badge, i) => (
-          <motion.div
-            key={i}
-            whileHover={{ scale: 1.15, rotate: 8 }}
-            className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${badge.bgColor || 'bg-yellow-50 border-yellow-200'} shadow-sm cursor-pointer`}
-            title={badge.name}
-          >
-            {badge.icon === 'award' && <Award size={15} className={badge.color || 'text-yellow-500'} />}
-            {badge.icon === 'star' && <Star size={15} className={badge.color || 'text-blue-500'} />}
-            {badge.icon === 'zap' && <Zap size={15} className={badge.color || 'text-purple-500'} />}
-          </motion.div>
-        ))}
-        {((userData?.badges?.length || 0) < 3) && (
-          <div className="w-10 h-10 rounded-full border-2 border-dashed border-blue-200 flex items-center justify-center text-blue-300 text-xs font-bold">
-            +{3 - (userData?.badges?.length || 0)}
+      {/* ── Progress bar section ── */}
+      <div className="mb-4">
+        {/* Label row */}
+        <div className="flex justify-between text-xs mb-1.5">
+          <span className="text-gray-500">
+            Next: <span className="font-semibold text-gray-700">{nextBadge.name}</span>
+          </span>
+          <span className="font-bold text-gray-700">
+            {currentPoints} / {nextBadge.points}
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="relative group">
+          <div className="h-3.5 bg-blue-50 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPercentage}%` }}
+              transition={{ delay: 0.3, duration: 1.1, type: 'spring', stiffness: 45 }}
+              className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full relative overflow-hidden"
+            >
+              {/* shimmer */}
+              <motion.div
+                className="absolute inset-0 bg-white opacity-20"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'linear' }}
+              />
+            </motion.div>
           </div>
-        )}
+
+          {/* Tooltip — sits above bar, no overflow clip needed (parent is overflow-visible) */}
+          <div
+            className="absolute -top-8 bg-gray-800 text-white text-xs rounded-md px-2 py-1
+                       opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none
+                       whitespace-nowrap z-10 -translate-x-1/2"
+            style={{ left: `${Math.max(Math.min(progressPercentage, 92), 8)}%` }}
+          >
+            {Math.round(progressPercentage)}% complete
+            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45 block" />
+          </div>
+        </div>
+
+        {/* Milestone dots — fixed height container prevents layout shift */}
+        <div className="relative h-8 mt-2">
+          <div className="absolute inset-x-0 top-0 flex justify-between px-0">
+            {STATIC_BADGES.map((badge, i) => {
+              const isUnlocked = badge.points <= currentPoints;
+              const isNext     = badge.points === nextBadge.points;
+              return (
+                <div
+                  key={i}
+                  className="flex flex-col items-center"
+                  onMouseEnter={() => setHoveredBadge(badge)}
+                  onMouseLeave={() => setHoveredBadge(null)}
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.4 }}
+                    animate={isNext ? { scale: [1, 1.35, 1] } : {}}
+                    transition={isNext ? { duration: 1.1, repeat: Infinity } : {}}
+                    className={`w-2.5 h-2.5 rounded-full cursor-pointer flex-shrink-0 ${
+                      isUnlocked ? 'bg-green-500' :
+                      isNext     ? 'bg-blue-500'  :
+                      'bg-gray-300'
+                    }`}
+                  />
+                  {/* Point label below dot */}
+                  <span className="text-gray-400 leading-none mt-0.5" style={{ fontSize: 8 }}>
+                    {badge.points}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
-    </div>
-  </Card>
-));
+
+      {/* ── Hover Badge Detail Tooltip ──
+           Fixed position inside card — uses portal-like bottom offset.
+           overflow-visible on Card lets this escape the card bounds cleanly. */}
+      <AnimatePresence>
+        {hoveredBadge && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.94 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-4 right-4 bg-white rounded-xl shadow-2xl border border-gray-100 p-3 z-40"
+            // Position it right below the progress section — roughly 220px from top
+            style={{ top: '220px' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center border-2 ${
+                hoveredBadge.points <= currentPoints ? hoveredBadge.bgColor : 'bg-gray-50 border-gray-200'
+              }`}>
+                <hoveredBadge.icon
+                  size={20}
+                  className={hoveredBadge.points <= currentPoints ? hoveredBadge.color : 'text-gray-300'}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-bold text-gray-800 text-sm truncate">{hoveredBadge.name}</p>
+                  {hoveredBadge.points <= currentPoints ? (
+                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
+                      <CheckCircle size={15} className="text-green-500 flex-shrink-0" />
+                    </motion.div>
+                  ) : (
+                    <span className="text-xs text-gray-400 flex-shrink-0">{hoveredBadge.points} pts</span>
+                  )}
+                </div>
+
+                {hoveredBadge.points > currentPoints ? (
+                  <>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1.5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min((currentPoints / hoveredBadge.points) * 100, 100)}%` }}
+                        className="h-full bg-blue-500 rounded-full"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {hoveredBadge.points - currentPoints} pts needed
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <Sparkles size={11} /> Unlocked!
+                  </p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Badge Collection Grid ── */}
+      {/* mt-16 when tooltip visible would shift things; use fixed spacing instead */}
+      <div className="mt-6 pt-4 border-t border-gray-50">
+        <div className="flex justify-between items-center mb-3">
+          <p className="text-xs text-gray-400 uppercase tracking-wider flex items-center gap-1">
+            <Medal size={13} /> Badges
+          </p>
+          <span className="text-xs text-blue-500 font-semibold">
+            {achievedBadges.length}/{STATIC_BADGES.length} Unlocked
+          </span>
+        </div>
+
+        <div className="grid grid-cols-4 gap-2">
+          {STATIC_BADGES.map((badge, index) => {
+            const isUnlocked = badge.points <= currentPoints;
+            const IconComponent = badge.icon;
+
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04 }}
+                whileHover={{ scale: 1.08, y: -3 }}
+                onHoverStart={() => setHoveredBadge(badge)}
+                onHoverEnd={()  => setHoveredBadge(null)}
+                className="relative cursor-pointer"
+              >
+                <motion.div
+                  className={`
+                    w-full aspect-square rounded-xl flex flex-col items-center justify-center
+                    gap-1 border-2 p-1.5 transition-colors duration-200
+                    ${isUnlocked ? `${badge.bgColor} shadow-sm` : 'bg-gray-50 border-gray-200'}
+                  `}
+                  animate={isUnlocked ? {
+                    boxShadow: [
+                      '0 2px 4px rgba(0,0,0,0.06)',
+                      '0 6px 16px rgba(0,0,0,0.10)',
+                      '0 2px 4px rgba(0,0,0,0.06)',
+                    ]
+                  } : {}}
+                  transition={{ duration: 2.5, repeat: isUnlocked ? Infinity : 0 }}
+                >
+                  <IconComponent
+                    size={20}
+                    className={isUnlocked ? badge.color : 'text-gray-300'}
+                  />
+
+                  <span className={`text-center font-semibold leading-tight ${
+                    isUnlocked ? 'text-gray-700' : 'text-gray-400'
+                  }`} style={{ fontSize: 9 }}>
+                    {badge.name}
+                  </span>
+                </motion.div>
+
+                {/* Unlocked check badge */}
+                {isUnlocked && (
+                  <div className="absolute -top-1.5 -right-1.5 z-10">
+                    <CheckCircle size={13} className="text-green-500 bg-white rounded-full" />
+                    <motion.div
+                      className="absolute inset-0 bg-green-400 rounded-full"
+                      animate={{ scale: [1, 1.7, 1], opacity: [0.4, 0, 0.4] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  </div>
+                )}
+
+                {/* Lock overlay */}
+                {!isUnlocked && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl opacity-0 hover:opacity-100 transition-opacity bg-white/60 backdrop-blur-[1px]">
+                    <span className="text-gray-500 font-bold" style={{ fontSize: 9 }}>
+                      {badge.points}pts
+                    </span>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Bottom motivational strip ── */}
+      <motion.div
+        className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl text-center"
+        whileHover={{ scale: 1.01 }}
+      >
+        <p className="text-xs text-gray-600 flex items-center justify-center gap-1.5 flex-wrap">
+          <Flame size={13} className="text-orange-500" />
+          <span className="font-semibold text-gray-800">
+            {Math.max(nextBadge.points - currentPoints, 0)} pts needed
+          </span>
+          <span className="text-gray-400">for</span>
+          <span className="font-bold text-blue-600">{nextBadge.name}</span>
+        </p>
+
+        {/* 5-dot progress indicator */}
+        <div className="flex justify-center gap-1.5 mt-2">
+          {[...Array(5)].map((_, i) => (
+            <motion.div
+              key={i}
+              className={`w-1.5 h-1.5 rounded-full ${
+                i < Math.floor(progressPercentage / 20) ? 'bg-blue-500' : 'bg-gray-200'
+              }`}
+              animate={i === Math.floor(progressPercentage / 20) && progressPercentage < 100 ? {
+                scale:   [1, 1.6, 1],
+                opacity: [1, 0.5, 1],
+              } : {}}
+              transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
+            />
+          ))}
+        </div>
+      </motion.div>
+
+    </Card>
+  );
+});
 
 // ─── QuickActionCard ──────────────────────────────────
 const QuickActionCard = memo(({ icon: Icon, title, description, color, onClick }) => (
@@ -622,66 +1071,108 @@ const StudentDashboard = () => {
 
   // Fetch current user data
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        setCurrentUser(user);
-        
-        // Get user data from Firestore
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          setUserData({
-            uid: user.uid,
-            ...userDoc.data()
-          });
-        }
-        
-        // Fetch all dashboard data
-        await fetchDashboardData(user.uid);
-      }
-      setLoading(false);
-    });
+  let unsubscribeUser = null;
 
-    // Auto-hide welcome banner
-    const timer = setTimeout(() => setShowWelcome(false), 4500);
-    
-    return () => {
-      unsubscribe();
-      clearTimeout(timer);
-    };
-  }, []);
+  const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      setCurrentUser(user);
+
+      // ✅ Real-time listener instead of one-time getDoc
+      unsubscribeUser = onSnapshot(
+        doc(db, 'users', user.uid),
+        (docSnap) => {
+          if (docSnap.exists()) {
+            setUserData({
+              uid: user.uid,
+              ...docSnap.data()
+            });
+          }
+        },
+        (error) => {
+          console.error('Error listening to user data:', error);
+        }
+      );
+
+      // Fetch leaderboard data once (or also make real-time if needed)
+      await fetchDashboardData(user.uid);
+    }
+    setLoading(false);
+  });
+
+  const timer = setTimeout(() => setShowWelcome(false), 4500);
+
+  return () => {
+    unsubscribeAuth();
+    unsubscribeUser?.();   // ✅ Clean up the user listener too
+    clearTimeout(timer);
+  };
+}, []);
 
   // Fetch all dashboard data
 // Fetch all dashboard data
-const fetchDashboardData = async (uid) => {
-  try {
-    // Fetch leaderboard (top 15 users by points)
-    const usersQuery = query(
-      collection(db, 'users'),
-      orderBy('points', 'desc'),
-      limit(15)
-    );
-    const usersSnapshot = await getDocs(usersQuery);
-    const usersList = usersSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    
-    console.log(`Fetched ${usersList.length} users`); // Debug log
-    
-    // Show top 5 in leaderboard component
-    setLeaderboardData(usersList.slice(0, 5));
-    
-    // Show ALL users in points graph (up to 15)
-    setPointsGraphData(usersList);
-    
-    // If you want exactly 15 even with fewer users, you could add placeholder data
-    if (usersList.length < 15) {
-      console.log(`Only ${usersList.length} users found in database`);
+useEffect(() => {
+  let unsubscribeUser = null;
+  let unsubscribeLeaderboard = null;
+
+  const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+    if (user) {
+      setCurrentUser(user);
+
+      // ✅ Real-time user data
+      unsubscribeUser = onSnapshot(
+        doc(db, 'users', user.uid),
+        (docSnap) => {
+          if (docSnap.exists()) {
+            setUserData({
+              uid: user.uid,
+              ...docSnap.data()
+            });
+          }
+        },
+        (error) => {
+          console.error('Error listening to user data:', error);
+        }
+      );
+
+      // ✅ REAL-TIME LEADERBOARD
+      const usersQuery = query(
+        collection(db, 'users'),
+        orderBy('points', 'desc'),
+        limit(15)
+      );
+
+      unsubscribeLeaderboard = onSnapshot(
+        usersQuery,
+        (snapshot) => {
+          const usersList = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+
+          // Top 5 for side leaderboard
+          setLeaderboardData(usersList.slice(0, 5));
+
+          // All 15 for graph
+          setPointsGraphData(usersList);
+        },
+        (error) => {
+          console.error('Error listening to leaderboard:', error);
+        }
+      );
     }
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-  }
-};
+
+    setLoading(false);
+  });
+
+  const timer = setTimeout(() => setShowWelcome(false), 4500);
+
+  return () => {
+    unsubscribeAuth();
+    unsubscribeUser?.();
+    unsubscribeLeaderboard?.();   // 🔥 IMPORTANT
+    clearTimeout(timer);
+  };
+}, []);
 
   // Handle sign out
   const handleSignOut = useCallback(async () => {
@@ -806,45 +1297,147 @@ const fetchDashboardData = async (uid) => {
 
           {/* Top Bar */}
           <motion.div
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between mb-7 bg-white rounded-2xl shadow-lg border border-blue-100 px-5 py-3.5 gap-4 flex-wrap"
-          >
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">{pageTitle}</h1>
-              <p className="text-gray-400 text-xs mt-0.5">
-                {activeTab === 'dashboard' ? 'Welcome back — keep the momentum going 🚀' : `Manage your ${pageTitle.toLowerCase()}`}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="relative hidden md:block">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search notes, PYQs…"
-                  className="bg-blue-50 border border-blue-100 rounded-xl pl-9 pr-4 py-2 text-sm text-gray-600 placeholder-gray-400 focus:outline-none focus:border-blue-400 focus:bg-white transition-all w-56"
-                />
-              </div>
-              <motion.button whileHover={{ scale: 1.08 }} className="relative p-2.5 bg-blue-50 rounded-xl border border-blue-100 hover:border-blue-300 transition-colors">
-                <Bell size={16} className="text-gray-600" />
-                {userData?.notifications?.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full ring-2 ring-white" />
-                )}
-              </motion.button>
-              <motion.div
-                whileHover={{ scale: 1.04 }}
-                className="flex items-center gap-2.5 bg-blue-50 rounded-xl border border-blue-100 px-3 py-2 cursor-pointer hover:border-blue-300 transition-colors"
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-md">
-                  <User size={14} className="text-white" />
-                </div>
-                <div className="text-sm hidden sm:block">
-                  <p className="font-semibold text-gray-800 leading-none">{userData?.username || 'Student'}</p>
-                  <p className="text-xs text-blue-500 font-medium mt-0.5">{userData?.points?.toLocaleString() || 0} pts</p>
-                </div>
-              </motion.div>
-            </div>
-          </motion.div>
+  initial={{ opacity: 0, y: -16 }}
+  animate={{ opacity: 1, y: 0 }}
+  className="flex items-center justify-between mb-7 bg-gradient-to-r from-white to-blue-50/30 rounded-2xl shadow-lg border border-blue-100/50 px-6 py-4 gap-4 flex-wrap backdrop-blur-sm"
+>
+  <div className="flex items-center gap-3">
+    {/* Animated icon based on active tab */}
+    <motion.div 
+      whileHover={{ rotate: 10, scale: 1.1 }}
+      className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md"
+    >
+      {activeTab === 'dashboard' ? (
+        <Sparkles size={18} className="text-white" />
+      ) : activeTab === 'notes' ? (
+        <BookOpen size={18} className="text-white" />
+      ) : activeTab === 'pyqs' ? (
+        <FileText size={18} className="text-white" />
+      ) : (
+        <Target size={18} className="text-white" />
+      )}
+    </motion.div>
+    
+    <div>
+      <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+        {pageTitle}
+      </h1>
+      <p className="text-gray-500 text-xs mt-0.5 flex items-center gap-1">
+        <span className="w-1 h-1 rounded-full bg-blue-500" />
+        {activeTab === 'dashboard' ? 'Welcome back — keep the momentum going 🚀' : `Manage your ${pageTitle.toLowerCase()}`}
+      </p>
+    </div>
+  </div>
+  
+  <div className="flex items-center gap-3">
+    {/* Enhanced search bar */}
+    <div className="relative hidden md:block group">
+      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+      <input
+        type="text"
+        placeholder="Search notes, PYQs…"
+        className="bg-white border border-blue-100 rounded-xl pl-9 pr-4 py-2.5 text-sm text-gray-600 placeholder-gray-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all w-64"
+      />
+      {/* Quick search hint */}
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5 opacity-0 group-focus-within:opacity-100 transition-opacity">
+        ⌘K
+      </div>
+    </div>
+
+    {/* Notification button with real-time indicator */}
+    <motion.button 
+      whileHover={{ scale: 1.08 }} 
+      whileTap={{ scale: 0.95 }}
+      className="relative p-2.5 bg-white rounded-xl border border-blue-100 hover:border-blue-300 hover:bg-blue-50/50 transition-all shadow-sm"
+    >
+      <Bell size={18} className="text-gray-600" />
+      {userData?.notifications?.length > 0 && (
+        <>
+          <motion.span 
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-blue-500 rounded-full ring-2 ring-white"
+          />
+          <motion.span
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-blue-500 rounded-full opacity-50"
+          />
+        </>
+      )}
+    </motion.button>
+
+    {/* User profile with real-time points */}
+    <motion.div
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.98 }}
+      className="flex items-center gap-3 bg-white rounded-xl border border-blue-100 pl-2 pr-4 py-1.5 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all group"
+    >
+      <div className="relative">
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+          <User size={16} className="text-white" />
+        </div>
+        {/* Online indicator */}
+        <motion.div 
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full ring-2 ring-white"
+        />
+      </div>
+      
+      <div className="text-sm hidden sm:block">
+  <p className="font-semibold text-gray-800 leading-none flex items-center gap-1">
+    {userData?.username || 'Student'}
+  </p>
+  
+  {/* Static points display - no animation */}
+  <div className="flex items-center gap-1.5 mt-1">
+    <div className="flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded-full">
+      <Sparkles size={10} className="text-blue-500" />
+      <span className="text-xs font-semibold text-blue-600">
+        {userData?.points?.toLocaleString() || 0}
+      </span>
+    </div>
+    <span className="text-[12px] text-gray-400">pts</span>
+  </div>
+</div>
+      
+      {/* Small indicator for mobile */}
+      <div className="block sm:hidden">
+        <div className="w-2 h-2 bg-blue-500 rounded-full" />
+      </div>
+    </motion.div>
+
+    {/* Quick actions menu (optional) */}
+    <motion.button
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.95 }}
+      className="p-2.5 bg-white rounded-xl border border-blue-100 hover:border-blue-300 hover:bg-blue-50/50 transition-all shadow-sm md:hidden"
+    >
+      <Search size={18} className="text-gray-600" />
+    </motion.button>
+  </div>
+
+  {/* Points update toast (appears when points increase) */}
+  <AnimatePresence>
+    {userData?.lastPointsGained > 0 && (
+      <motion.div
+        initial={{ opacity: 0, y: 20, x: '-50%' }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-full bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs rounded-full px-4 py-2 shadow-lg flex items-center gap-2"
+      >
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity }}
+        >
+          <Sparkles size={12} />
+        </motion.div>
+        <span>+{userData.lastPointsGained} points earned!</span>
+      </motion.div>
+    )}
+  </AnimatePresence>
+</motion.div>
 
           {/* Page content */}
           <AnimatePresence mode="wait">

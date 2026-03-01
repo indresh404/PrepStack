@@ -256,13 +256,13 @@ const Sidebar = ({ activeTab, setActiveTab, collapsed, setCollapsed }) => {
                 {!collapsed && (
                   <div className="relative z-10 flex gap-1 flex-shrink-0">
                     {item.highlight && (
-                      <span className="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-bold shadow-lg shadow-blue-500/30">
-                        AI
+                      <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-bold shadow-lg shadow-blue-500/30">
+                        AI ANALYSIS
                       </span>
                     )}
                     {item.special && (
                       <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold shadow-lg shadow-amber-500/30">
-                        TOP
+                        THE•BEST
                       </span>
                     )}
                   </div>
