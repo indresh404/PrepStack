@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Mail, Lock, User, Briefcase, BookOpen,
+  Mail, Lock, User, Briefcase, BookOpen, Shield,
   Loader2, AlertCircle
 } from "lucide-react";
 
@@ -72,14 +72,33 @@ const Login = () => {
     return email.endsWith('@slrtce.in');
   };
 
-  // 🔥 FIREBASE LOGIN HANDLER
+  // 🔥 FIREBASE LOGIN HANDLER - WITH ADMIN CHECK
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setErrors({});
     
+    // 🚀 ADMIN LOGIN CHECK
+    if (loginData.email === "admin" && loginData.password === "123*") {
+      console.log("Admin login successful");
+      
+      // Store admin data in localStorage
+      localStorage.setItem("token", "admin-token");
+      localStorage.setItem("user", JSON.stringify({
+        uid: "admin",
+        email: "admin@prepstack.com",
+        role: "admin",
+        username: "Admin"
+      }));
+      
+      // Redirect to admin dashboard
+      navigate("/admin");
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      // Sign in with Firebase Auth
+      // Regular user login with Firebase
       const userCredential = await signInWithEmailAndPassword(
         auth, 
         loginData.email, 
@@ -376,7 +395,7 @@ const Login = () => {
                   {isLogin ? "Sign in to your account" : "Create a new account"}
                 </p>
 
-                <form className="space-y-3" onSubmit={isLogin ? handleLoginSubmit : handleSignupSubmit}>
+                <form className="space-y-3" onSubmit={handleLoginSubmit}>
                   {!isLogin && (
                     <motion.div 
                       initial={{ opacity: 0, height: 0 }} 
@@ -440,9 +459,9 @@ const Login = () => {
 
                   {/* Email field - always show for both login and signup */}
                   <FormInput 
-                    name={isLogin ? "email" : "email"}
-                    placeholder={isLogin ? "Email (@slrtce.in)" : "Email (@slrtce.in)"}
-                    icon={<Mail size={16}/>} 
+                    name="email" 
+                    placeholder={isLogin ? "Email or Admin" : "Email (@slrtce.in)"}
+                    icon={isLogin && loginData.email === "admin" ? <Shield size={16}/> : <Mail size={16}/>} 
                     value={isLogin ? loginData.email : signupData.email} 
                     onChange={isLogin ? handleLoginChange : handleSignupChange} 
                     error={errors.email}
@@ -497,6 +516,11 @@ const Login = () => {
                     {isLogin ? "Create account" : "Login here"}
                   </button>
                 </p>
+                {isLogin && (
+                  <p className="text-center text-[10px] text-slate-400 mt-2">
+                    Admin: use "admin" / "123*"
+                  </p>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
