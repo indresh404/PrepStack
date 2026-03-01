@@ -17,6 +17,7 @@ import {
   getDocs, limit, getDoc
 } from 'firebase/firestore';
 
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 const BRANCHES = ['All Branches', 'Computer Engineering', 'Information Technology', 'EXTC', 'Mechanical', 'Civil'];
 const SEMESTERS = ['All Sems', 'Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8'];
