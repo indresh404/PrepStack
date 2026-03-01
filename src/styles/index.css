@@ -12,9 +12,7 @@ html {
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #f6f7ff;
+  /* REMOVE color-scheme and color/background from here */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
