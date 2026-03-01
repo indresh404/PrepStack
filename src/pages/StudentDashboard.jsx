@@ -261,7 +261,6 @@ const PointsBarGraph = ({ data }) => {
             <motion.div
               key={student.id || student.name || index}
               variants={fadeUp}
-              initial="hidden"
               animate="show"
               transition={{ delay: Math.min(index * 0.03, 0.5) }}
               className="relative"
@@ -856,7 +855,7 @@ const DashboardContent = memo(({
   onQuickAction,
   recentActivity
 }) => (
-  <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+  <motion.div variants={stagger} animate="show" className="space-y-6">
 
     {/* Welcome Banner */}
     <AnimatePresence>
