@@ -519,11 +519,7 @@ const Login = () => {
                     {isLogin ? "Create account" : "Login here"}
                   </button>
                 </p>
-                {isLogin && (
-                  <p className="text-center text-[10px] text-slate-400 mt-2">
-                    Admin: use "admin" / "123*"
-                  </p>
-                )}
+                
               </motion.div>
             )}
           </AnimatePresence>
