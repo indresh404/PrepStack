@@ -1,12 +1,3 @@
-// src/components/student/ExamMode.jsx
-// ✅ No backend needed — calls Groq API directly from the browser
-// 
-// 📌 SETUP INSTRUCTIONS:
-// 1. Create a .env file in your project root
-// 2. Add: VITE_GROQ_API_KEY=your_groq_api_key_here
-// 3. Restart your dev server
-// 4. Make sure PDFs exist in: /public/AOA.pdf, /public/DBMS.pdf, /public/JAVA.pdf
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as pdfjsLib from "pdfjs-dist";
