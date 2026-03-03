@@ -106,7 +106,7 @@ const TOP_NOTES = {
       preview: 'Quick reference with implementations in Python, Java, and C++. Includes complexity analysis and when to use each algorithm.',
       isPremium: false,
       tags: ['⭐ Top Rated', '📌 Pinned'],
-      lastUpdated: '1 week ago'
+      lastUpdated: '1 Day ago'
     },
     {
       id: 3,
@@ -171,7 +171,7 @@ const TOP_NOTES = {
       preview: 'Step-by-step guide with real-world examples and exercises. Learn to eliminate redundancy and design efficient databases.',
       isPremium: false,
       tags: ['⭐ Top Rated', '📌 Pinned'],
-      lastUpdated: '1 week ago'
+      lastUpdated: '1 Day ago'
     }
   ],
   JAVA: [
@@ -348,7 +348,7 @@ Return a JSON object with this exact structure:
   "keyInsights": ["insight1", "insight2", "insight3"],
   "studyPlan": [
     {
-      "priority": "Week 1" | "Week 2" | "Week 3",
+      "priority": "Day 1" | "Day 2" | "Day 3",
       "topics": ["topic1", "topic2"],
       "focus": "what to focus on",
       "estimatedHours": number
@@ -959,7 +959,7 @@ const ExamMode = () => {
             <StatCard
               icon={TrendingUp}
               value={analysis.studyPlan.length}
-              label="Study Weeks"
+              label="Study Days"
               color="bg-purple-600"
             />
           </div>
@@ -1012,7 +1012,7 @@ const ExamMode = () => {
                 Recommended Study Plan
               </h3>
               <div className="space-y-4">
-                {analysis.studyPlan.map((week, i) => (
+                {analysis.studyPlan.map((Day, i) => (
                   <motion.div 
                     key={i}
                     initial={{ opacity: 0, x: 10 }}
@@ -1020,16 +1020,16 @@ const ExamMode = () => {
                     transition={{ delay: i * 0.1 }}
                     className="border-l-4 border-green-500 pl-4 py-2"
                   >
-                    <p className="text-sm font-semibold text-green-600">{week.priority}</p>
+                    <p className="text-sm font-semibold text-green-600">{Day.priority}</p>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {week.topics.map((topic, j) => (
+                      {Day.topics.map((topic, j) => (
                         <span key={j} className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
                           {topic}
                         </span>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">{week.focus}</p>
-                    <p className="text-xs text-gray-400 mt-1">⏱️ {week.estimatedHours} hours recommended</p>
+                    <p className="text-xs text-gray-500 mt-2">{Day.focus}</p>
+                    <p className="text-xs text-gray-400 mt-1">⏱️ {Day.estimatedHours} hours recommended</p>
                   </motion.div>
                 ))}
               </div>
