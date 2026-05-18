@@ -421,5 +421,3 @@ This project is licensed under the MIT License. See the [LICENSE](file:///c:/Use
 * 🛡️ **Plagiarism Checker**: Scans student uploads to block copy-pasted web documents and textbook material.
 * 💬 **Real-time Collaboration Sheets**: Live chat integration inside subjects to allow peer studying.
 * 📱 **Native Mobile Client**: An iOS/Android companion app to enable offline note saving.
-
-*Developed with ❤️ for Shree L. R. Tiwari College of Engineering (SLRTCE) & Mumbai University Students.*
