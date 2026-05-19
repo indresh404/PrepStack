@@ -1,20 +1,40 @@
 // src/pages/AdminDashboard.jsx
 import React, { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import AdminDashboardSkeleton from "../components/dashboard/AdminDashboardSkeleton";
 import {
-  LayoutDashboard, FileText, Users, BookOpen, Search,
-  LogOut, Bell, ChevronDown, Trash2, CheckCircle, XCircle,
-  Filter, Star, Download, ThumbsUp, Award, BarChart2,
-  Shield, Settings, Menu, X, AlertTriangle, Clock, GraduationCap,
-  Layers, ChevronRight, RefreshCw, ArrowUpRight, Flame, Crown,
-  Medal, BadgeCheck, Sparkles, BookMarked,
-  FileCheck, FileClock, FileX, Eye, TrendingUp
+  FileText,
+BookOpen,
+Search,
+LogOut,
+Bell,
+ChevronDown,
+Trash2,
+CheckCircle,
+XCircle,
+Filter,
+Download,
+ThumbsUp,
+Shield,
+X,
+AlertTriangle,
+Clock,
+GraduationCap,
+Layers,
+RefreshCw,
+Crown,
+BadgeCheck,
+Eye,
+TrendingUp
 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import {
-  collection, query, onSnapshot, where, orderBy,
-  updateDoc, doc, deleteDoc, increment, arrayUnion, arrayRemove,
-  getDocs, limit, getDoc
+  collection,
+  query,
+  onSnapshot,
+  updateDoc,
+  doc,
+  deleteDoc
 } from 'firebase/firestore';
 
 
@@ -564,6 +584,7 @@ const TopContributors = memo(({ contributors }) => {
 const AdminDashboard = ({ onSignOut }) => {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+const [showSkeleton, setShowSkeleton] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     search: '', branch: 'All Branches', sem: 'All Sems',
@@ -573,42 +594,128 @@ const AdminDashboard = ({ onSignOut }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ─── Real-time listener ─────────────────────────────────────────────────
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const q = query(collection(db, 'notes'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+ // ─── Real-time listener ─────────────────────────────────────────────────
+useEffect(() => {
+  let mounted = true;
+
+  setLoading(true);
+  setShowSkeleton(true);
+  setError(null);
+
+  const q = query(collection(db, 'notes'));
+
+  const unsubscribe = onSnapshot(
+    q,
+
+    // SUCCESS
+    async (snapshot) => {
       try {
-        const notesData = snapshot.docs.map(d => {
+        const notesData = snapshot.docs.map((d) => {
           const data = d.data();
-          const authorName = data.authorName || data.author || data.uploadedByName || 'Anonymous';
-          const authorInitials = authorName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'AN';
+
+          const authorName =
+            data.authorName ||
+            data.author ||
+            data.uploadedByName ||
+            'Anonymous';
+
+          const authorInitials =
+            authorName
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2)
+              .toUpperCase() || 'AN';
+
           return {
             id: d.id,
             ...data,
+
             authorName,
             authorInitials,
             avatar: authorInitials,
-            sem: data.semester ? `Sem ${data.semester}` : data.sem,
-            resourceType: data.resourceType || data.type || 'notes',
-            status: data.status || (data.verified ? 'approved' : 'pending'),
+
+            sem: data.semester
+              ? `Sem ${data.semester}`
+              : data.sem,
+
+            resourceType:
+              data.resourceType ||
+              data.type ||
+              'notes',
+
+            status:
+              data.status ||
+              (data.verified ? 'approved' : 'pending'),
+
             verified: data.verified || false,
-            uploadedAt: data.uploadedAt?.toDate?.() || new Date(),
+
+            uploadedAt:
+              data.uploadedAt?.toDate?.() || new Date(),
           };
         });
-        notesData.sort((a, b) => b.uploadedAt - a.uploadedAt);
+
+        // Latest first
+        notesData.sort(
+          (a, b) =>
+            new Date(b.uploadedAt) -
+            new Date(a.uploadedAt)
+        );
+
+        if (!mounted) return;
+
         setNotes(notesData);
-        setLoading(false);
+
+        // Smooth loading transition
+        setTimeout(() => {
+          if (!mounted) return;
+
+          setLoading(false);
+
+          setTimeout(() => {
+            if (mounted) {
+              setShowSkeleton(false);
+            }
+          }, 150);
+        }, 400);
+
       } catch (err) {
-        setError('Error processing notes: ' + err.message);
+        console.error(err);
+
+        if (!mounted) return;
+
+        setError(
+          'Error processing notes: ' + err.message
+        );
+
         setLoading(false);
+        setShowSkeleton(false);
       }
-    }, (err) => {
-      setError('Failed to load notes: ' + err.message);
+    },
+
+    // ERROR
+    (err) => {
+      console.error(err);
+
+      if (!mounted) return;
+
+      setError(
+        'Failed to load notes: ' + err.message
+      );
+
       setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+      setShowSkeleton(false);
+    }
+  );
+
+  // CLEANUP
+  return () => {
+    mounted = false;
+    unsubscribe();
+  };
+
+}, []);
+
 
   const subjects = useMemo(() => {
     if (filters.branch === 'All Branches' || filters.sem === 'All Sems') return ['All Subjects'];
@@ -693,19 +800,10 @@ const AdminDashboard = ({ onSignOut }) => {
   }, [notes]);
 
   // ─── Loading ──────────────────────────────────────────────────────────────
-  if (loading) return (
-    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
-      <div className="text-center">
-        <div className="relative w-12 h-12 mx-auto mb-5">
-          <div className="absolute inset-0 rounded-full border-2 border-indigo-100" />
-          <div className="absolute inset-0 rounded-full border-t-2 border-indigo-600 animate-spin" />
-          <Shield size={20} className="absolute inset-0 m-auto text-indigo-600" />
-        </div>
-        <p className="text-slate-600 font-semibold text-sm">Loading PrepStack Admin</p>
-        <p className="text-xs text-slate-400 mt-1">Connecting to database…</p>
-      </div>
-    </div>
-  );
+  // ─── Loading ──────────────────────────────────────────────────────────────
+if (loading || showSkeleton) {
+  return <AdminDashboardSkeleton />;
+}
 
   // ─── Error ────────────────────────────────────────────────────────────────
   if (error) return (
@@ -774,7 +872,7 @@ const AdminDashboard = ({ onSignOut }) => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w mx-auto px-4 sm:px-6 py-7">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-7">
         <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-5">
 
           {/* Stats */}
